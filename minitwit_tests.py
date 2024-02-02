@@ -56,9 +56,9 @@ class MiniTwitTestCase(unittest.TestCase):
     def add_message(self, text):
         """Records a message"""
         rv = self.app.post('/add_message', data={'text': text},
-                                    follow_redirects=True)
+                           follow_redirects=True)
         if text:
-            assert 'Your message was recorded' in rv.data
+            assert 'Your message was recorded' in rv.data.decode()
         return rv
 
     # testing functions
@@ -67,28 +67,28 @@ class MiniTwitTestCase(unittest.TestCase):
         """Make sure registering works"""
         rv = self.register('user1', 'default')
         assert 'You were successfully registered ' \
-               'and can login now' in rv.data
+               'and can login now' in rv.data.decode()
         rv = self.register('user1', 'default')
-        assert 'The username is already taken' in rv.data
+        assert 'The username is already taken' in rv.data.decode()
         rv = self.register('', 'default')
-        assert 'You have to enter a username' in rv.data
+        assert 'You have to enter a username' in rv.data.decode()
         rv = self.register('meh', '')
-        assert 'You have to enter a password' in rv.data
+        assert 'You have to enter a password' in rv.data.decode()
         rv = self.register('meh', 'x', 'y')
-        assert 'The two passwords do not match' in rv.data
+        assert 'The two passwords do not match' in rv.data.decode()
         rv = self.register('meh', 'foo', email='broken')
-        assert 'You have to enter a valid email address' in rv.data
+        assert 'You have to enter a valid email address' in rv.data.decode()
 
     def test_login_logout(self):
         """Make sure logging in and logging out works"""
         rv = self.register_and_login('user1', 'default')
-        assert 'You were logged in' in rv.data
+        assert 'You were logged in' in rv.data.decode()
         rv = self.logout()
-        assert 'You were logged out' in rv.data
+        assert 'You were logged out' in rv.data.decode()
         rv = self.login('user1', 'wrongpassword')
-        assert 'Invalid password' in rv.data
+        assert 'Invalid password' in rv.data.decode()
         rv = self.login('user2', 'wrongpassword')
-        assert 'Invalid username' in rv.data
+        assert 'Invalid username' in rv.data.decode()
 
     def test_message_recording(self):
         """Check if adding messages works"""
@@ -96,8 +96,8 @@ class MiniTwitTestCase(unittest.TestCase):
         self.add_message('test message 1')
         self.add_message('<test message 2>')
         rv = self.app.get('/')
-        assert 'test message 1' in rv.data
-        assert '&lt;test message 2&gt;' in rv.data
+        assert 'test message 1' in rv.data.decode()
+        assert '&lt;test message 2&gt;' in rv.data.decode()
 
     def test_timelines(self):
         """Make sure that timelines work"""
@@ -107,37 +107,37 @@ class MiniTwitTestCase(unittest.TestCase):
         self.register_and_login('bar', 'default')
         self.add_message('the message by bar')
         rv = self.app.get('/public')
-        assert 'the message by foo' in rv.data
-        assert 'the message by bar' in rv.data
+        assert 'the message by foo' in rv.data.decode()
+        assert 'the message by bar' in rv.data.decode()
 
         # bar's timeline should just show bar's message
         rv = self.app.get('/')
-        assert 'the message by foo' not in rv.data
-        assert 'the message by bar' in rv.data
+        assert 'the message by foo' not in rv.data.decode()
+        assert 'the message by bar' in rv.data.decode()
 
         # now let's follow foo
         rv = self.app.get('/foo/follow', follow_redirects=True)
-        assert 'You are now following &#34;foo&#34;' in rv.data
+        assert 'You are now following &#34;foo&#34;' in rv.data.decode()
 
         # we should now see foo's message
         rv = self.app.get('/')
-        assert 'the message by foo' in rv.data
-        assert 'the message by bar' in rv.data
+        assert 'the message by foo' in rv.data.decode()
+        assert 'the message by bar' in rv.data.decode()
 
         # but on the user's page we only want the user's message
         rv = self.app.get('/bar')
-        assert 'the message by foo' not in rv.data
-        assert 'the message by bar' in rv.data
+        assert 'the message by foo' not in rv.data.decode()
+        assert 'the message by bar' in rv.data.decode()
         rv = self.app.get('/foo')
-        assert 'the message by foo' in rv.data
-        assert 'the message by bar' not in rv.data
+        assert 'the message by foo' in rv.data.decode()
+        assert 'the message by bar' not in rv.data.decode()
 
         # now unfollow and check if that worked
         rv = self.app.get('/foo/unfollow', follow_redirects=True)
-        assert 'You are no longer following &#34;foo&#34;' in rv.data
+        assert 'You are no longer following &#34;foo&#34;' in rv.data.decode()
         rv = self.app.get('/')
-        assert 'the message by foo' not in rv.data
-        assert 'the message by bar' in rv.data
+        assert 'the message by foo' not in rv.data.decode()
+        assert 'the message by bar' in rv.data.decode()
 
 
 if __name__ == '__main__':
