@@ -17,8 +17,7 @@ from datetime import datetime
 from contextlib import closing
 from flask import Flask, request, session, url_for, redirect, \
      render_template, abort, g, flash
-from werkzeug import check_password_hash, generate_password_hash
-
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # configuration
 DATABASE = '/tmp/minitwit.db'
@@ -29,19 +28,16 @@ SECRET_KEY = 'development key'
 # create our little application :)
 app = Flask(__name__)
 
-
 def connect_db():
     """Returns a new connection to the database."""
     return sqlite3.connect(DATABASE)
-
 
 def init_db():
     """Creates the database tables."""
     with closing(connect_db()) as db:
         with app.open_resource('schema.sql') as f:
-            db.cursor().executescript(f.read())
+            db.cursor().executescript(f.read().decode("utf-8"))
         db.commit()
-
 
 def query_db(query, args=(), one=False):
     """Queries the database and returns a list of dictionaries."""
@@ -50,24 +46,20 @@ def query_db(query, args=(), one=False):
                for idx, value in enumerate(row)) for row in cur.fetchall()]
     return (rv[0] if rv else None) if one else rv
 
-
 def get_user_id(username):
     """Convenience method to look up the id for a username."""
     rv = g.db.execute('select user_id from user where username = ?',
                        [username]).fetchone()
     return rv[0] if rv else None
 
-
 def format_datetime(timestamp):
     """Format a timestamp for display."""
     return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d @ %H:%M')
-
 
 def gravatar_url(email, size=80):
     """Return the gravatar image for the given email address."""
     return 'http://www.gravatar.com/avatar/%s?d=identicon&s=%d' % \
         (md5(email.strip().lower().encode('utf-8')).hexdigest(), size)
-
 
 @app.before_request
 def before_request():
@@ -80,13 +72,11 @@ def before_request():
         g.user = query_db('select * from user where user_id = ?',
                           [session['user_id']], one=True)
 
-
 @app.after_request
 def after_request(response):
     """Closes the database again at the end of the request."""
     g.db.close()
     return response
-
 
 @app.route('/')
 def timeline():
@@ -94,7 +84,7 @@ def timeline():
     redirect to the public timeline.  This timeline shows the user's
     messages as well as all the messages of followed users.
     """
-    print "We got a visitor from: " + str(request.remote_addr)
+    print("We got a visitor from: " + str(request.remote_addr))
     if not g.user:
         return redirect(url_for('public_timeline'))
     offset = request.args.get('offset', type=int)
@@ -107,7 +97,6 @@ def timeline():
         order by message.pub_date desc limit ?''',
         [session['user_id'], session['user_id'], PER_PAGE]))
 
-
 @app.route('/public')
 def public_timeline():
     """Displays the latest messages of all users."""
@@ -115,7 +104,6 @@ def public_timeline():
         select message.*, user.* from message, user
         where message.flagged = 0 and message.author_id = user.user_id
         order by message.pub_date desc limit ?''', [PER_PAGE]))
-
 
 @app.route('/<username>')
 def user_timeline(username):
@@ -136,7 +124,6 @@ def user_timeline(username):
             [profile_user['user_id'], PER_PAGE]), followed=followed,
             profile_user=profile_user)
 
-
 @app.route('/<username>/follow')
 def follow_user(username):
     """Adds the current user as follower of the given user."""
@@ -150,7 +137,6 @@ def follow_user(username):
     g.db.commit()
     flash('You are now following "%s"' % username)
     return redirect(url_for('user_timeline', username=username))
-
 
 @app.route('/<username>/unfollow')
 def unfollow_user(username):
@@ -166,7 +152,6 @@ def unfollow_user(username):
     flash('You are no longer following "%s"' % username)
     return redirect(url_for('user_timeline', username=username))
 
-
 @app.route('/add_message', methods=['POST'])
 def add_message():
     """Registers a new message for the user."""
@@ -179,7 +164,6 @@ def add_message():
         g.db.commit()
         flash('Your message was recorded')
     return redirect(url_for('timeline'))
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -200,7 +184,6 @@ def login():
             session['user_id'] = user['user_id']
             return redirect(url_for('timeline'))
     return render_template('login.html', error=error)
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -230,7 +213,6 @@ def register():
             return redirect(url_for('login'))
     return render_template('register.html', error=error)
 
-
 @app.route('/logout')
 def logout():
     """Logs the user out"""
@@ -238,14 +220,12 @@ def logout():
     session.pop('user_id', None)
     return redirect(url_for('public_timeline'))
 
-
 # add some filters to jinja and set the secret key and debug mode
 # from the configuration.
 app.jinja_env.filters['datetimeformat'] = format_datetime
 app.jinja_env.filters['gravatar'] = gravatar_url
 app.secret_key = SECRET_KEY
 app.debug = DEBUG
-
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0")
