@@ -4,10 +4,25 @@ use askama_actix::{Template};
 
 #[derive(Template)] // this will generate the code...
 #[template(path = "../templates/hello.html")] // using the template in this path, relative
-
 struct HelloTemplate<'a> { // the name of the struct can be anything
     name: &'a str, // the field name should match the variable name
                    // in your template
+}
+#[derive(Template)] // this will generate the code...
+#[template(path = "../templates/timeline.html")] 
+struct TimelineTemplate<'a> { // the name of the struct can be anything
+    name: &'a str, // the field name should match the variable name
+    profile_user: ProfileUser<'a>,
+    flashes: bool,
+    request: RequestStruct,
+    
+}
+struct ProfileUser<'a> {
+    username: &'a str,
+}
+
+struct RequestStruct {
+    endpoint: str,
 }
 
 #[actix_web::main]
