@@ -1,4 +1,5 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, cookie::Key};
+use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
 use actix_files as fs;
 use askama_actix::Template;
 use rusqlite::{params, Connection, Result};
@@ -23,10 +24,16 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(|| {
         App::new()
+            .wrap(
+                SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
+                .cookie_secure(false)
+                .build()
+            )
             .service(hello)
             .service(fs::Files::new("/static", "../static").index_file("index.html"))
             .route("/hey", web::get().to(manual_hello))
             .route("/test", web::get().to(render_hello_template))
+            .route("/cookie", web::get().to(cookie_test))
     })
     .bind(("0.0.0.0", 5000))?
     .run()
@@ -45,6 +52,17 @@ async fn manual_hello() -> impl Responder {
 async fn render_hello_template() -> impl Responder {
     game();
     return HelloTemplate { name: "AAAA" };
+}
+
+async fn cookie_test(session: Session) -> impl Responder {
+    if let Ok(Some(count)) = session.get::<i32>("counter") {
+        session.insert("counter", count + 1);
+    } else {
+        session.insert("counter", 0);
+    }
+    
+    let count = session.get::<i32>("counter").unwrap().unwrap();
+    HttpResponse::Ok().body(format!("Session has been refreshed {count} times"))
 }
 
 fn game() -> Result<()> {
