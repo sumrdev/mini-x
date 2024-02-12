@@ -6,11 +6,36 @@ use rusqlite::{params, Connection, Result};
 
 #[derive(Template)] // this will generate the code...
 #[template(path = "../templates/hello.html")] // using the template in this path, relative
-
 struct HelloTemplate<'a> { // the name of the struct can be anything
     name: &'a str, // the field name should match the variable name
                    // in your template
 }
+struct User {
+    user_id: String,
+    user_name: String,
+} 
+// https://doc.rust-lang.org/std/vec/index.html
+// https://doc.rust-lang.org/std/option/enum.Option.html
+#[derive(Template)] // this will generate the code...
+#[template(path = "../templates/layout.html")] // using the template in this path, relative
+struct LayoutTemplate<'a> {// should be used as a wrapper not sure how
+    title: &'a str,
+    body: &'a str,
+    g_user: Option<User>,// Optione is a nullable field user not defined
+    flashes: None//Option with messeges aka options(vec) or just a vec
+}
+#[derive(Template)]
+#[template(path = "../templates/timeline.html")] 
+struct TimelineTemplate<'a> {
+    name: String, // Is it not title 
+    messages:Vec<String>,// Vec<Message>, dynamic array of mesege structs 
+    user: Option<User>,
+    request_endpoint: &'a str,//just an URL does not need to be strct
+    profile_user: Option<User>,
+    followed: bool,//Unsure how to difine this properly
+}
+
+
 
 #[derive(Debug)]
 struct Person {
