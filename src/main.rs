@@ -57,6 +57,16 @@ struct TimelineTemplate<'a> {
     followed: bool, //Unsure how to define this properly
 }
 
+#[derive(Template)]
+#[template(path = "../templates/login.html")]
+struct LoginTemplate {
+    user: Option<User>,
+    //g: Option<G>,
+    flashes: Vec<String>,
+    username: String,            // Is it not title
+    error: String,            // Is it not title
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let signing_key = Key::generate(); // This will usually come from configuration!
@@ -101,8 +111,7 @@ fn query_db(query: &str) {}
 
 fn get_user_id(username: &str) -> Result<usize, rusqlite::Error>{
     let conn = connect_db().unwrap();
-    let mut stmt = conn.execute("SELECT user_id FROM user WHERE username = ?1", params![username]);
-    return stmt;
+    conn.execute("SELECT user_id FROM user WHERE username = ?1", params![username])
 }
 
 fn g(session: Session) -> Result<()> {
@@ -127,9 +136,8 @@ fn g_mock() -> Result<G> {
     })
 }
 
-#[get("/")]
-async fn timeline(flash_messages: IncomingFlashMessages) -> impl Responder {
-    let messages: Vec<Messages> = vec![
+fn get_messages() -> Vec<Messages> {
+    vec![
         Messages {
             text: String::from("Hello, world!"),
             email: String::from("example@email.com"),
@@ -142,15 +150,19 @@ async fn timeline(flash_messages: IncomingFlashMessages) -> impl Responder {
             username: String::from("user456"),
             pub_date: Utc::now(),
         },
-    ];
-    
+    ]
+}
+
+#[get("/")]
+async fn timeline(flash_messages: IncomingFlashMessages) -> impl Responder {
+
     //if no user
     //    Ok(HttpResponse::SeeOther()
     // .header("Location", "/public")
     // .finish());
     let g_mock = g_mock().unwrap();
     return SimpleTemplate { 
-        messages, 
+        messages: get_messages(), 
         request_endpoint:"/aa", 
         profile_user: Some(User {user_id:Uuid::new_v4(), username:String::from("Name") }), 
         user: Some(g_mock.user ), 
@@ -185,11 +197,18 @@ async fn add_message() -> impl Responder {
 }
 
 #[get("/login")]
-async fn login() -> impl Responder {
+async fn login(flash_messages: IncomingFlashMessages) -> impl Responder {
     FlashMessage::info("You were logged in!!").send();
-    HttpResponse::TemporaryRedirect()
+    /* HttpResponse::TemporaryRedirect()
         .insert_header((http::header::LOCATION, "/"))
-        .finish()
+        .finish() */
+    let g_mock = g_mock().unwrap();
+    return LoginTemplate { 
+        user: Some(g_mock.user ), 
+        flashes: get_flashes(flash_messages),
+        error: String::from(""),
+        username: String::from("a")
+    };
 }
 
 fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
