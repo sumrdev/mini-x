@@ -50,6 +50,13 @@ struct TimelineTemplate<'a> {
     followed: bool,//Unsure how to define this properly
 }
 
+#[derive(Debug)]
+struct Person {
+    id: i32,
+    name: String,
+    data: Option<Vec<u8>>,
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 
@@ -59,7 +66,7 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/static", "../static").index_file("index.html"))
             
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 5000))?
     .run()
     .await
 }
@@ -157,4 +164,60 @@ async fn register() -> impl Responder {
 #[get("/logout")]
 async fn logout() -> impl Responder {
     return HelloTemplate { name: "AAAA" };
+async fn manual_hello() -> impl Responder {
+    HttpResponse::Ok().body("Hey there!")
+}
+
+async fn render_hello_template() -> impl Responder {
+    game();
+    return HelloTemplate { name: "AAAA" };
+}
+
+async fn cookie_test(session: Session) -> impl Responder {
+    if let Ok(Some(count)) = session.get::<i32>("counter") {
+        session.insert("counter", count + 1);
+    } else {
+        session.insert("counter", 0);
+    }
+    
+    let count = session.get::<i32>("counter").unwrap().unwrap();
+    HttpResponse::Ok().body(format!("Session has been refreshed {count} times"))
+}
+
+fn game() -> Result<()> {
+    let conn = Connection::open("/tmp/test.db")?;
+
+    conn.execute(
+        "CREATE TABLE person (
+                  id              INTEGER PRIMARY KEY,
+                  name            TEXT NOT NULL,
+                  data            BLOB
+                  )",
+        [],
+    )?;
+    let me = Person {
+        id: 0,
+        name: "Steven".to_string(),
+        data: None,
+    };
+    conn.execute(
+        "INSERT INTO person (name, data) VALUES (?1, ?2)",
+        params![me.name, me.data],
+    )?;
+
+    let mut stmt = conn.prepare("SELECT id, name, data FROM person")?;
+    let person_iter = stmt.query_map([], |row| {
+        Ok(Person {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            data: row.get(2)?,
+        })
+    })?;
+
+    for person in person_iter {
+        println!("Found person {:?}", person.unwrap());
+    }
+
+    Ok(())
+} 
 }
