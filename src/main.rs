@@ -46,16 +46,6 @@ struct SimpleTemplate<'a> {
     flashes: Vec<String>
 }
 
-#[derive(Template)]
-#[template(path = "../templates/layout.html")]
-struct LayoutTemplateOld {
-    // should be used as a wrapper not sure how
-    user: Option<User>,                // Option is a nullable field user not defined
-    flashes: Vec<String>, //Option with messages aka options(vec) or just a vec
-}
-
-// String
-
 //#[derive(Template)]
 //#[template(path = "../templates/timeline.html")]
 struct TimelineTemplate<'a> {
@@ -84,7 +74,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(message_framework.clone())
             .service(timeline)
             .service(login)
-            .service(layout)
+            .service(logout)
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -138,7 +128,7 @@ fn g_mock() -> Result<G> {
 }
 
 #[get("/")]
-async fn timeline() -> impl Responder {
+async fn timeline(flash_messages: IncomingFlashMessages) -> impl Responder {
     let messages: Vec<Messages> = vec![
         Messages {
             text: String::from("Hello, world!"),
@@ -165,7 +155,7 @@ async fn timeline() -> impl Responder {
         profile_user: Some(User {user_id:Uuid::new_v4(), username:String::from("Name") }), 
         user: Some(g_mock.user ), 
         followed: false,
-        flashes: vec![]
+        flashes: get_flashes(flash_messages),
     };
 }
 
@@ -181,12 +171,12 @@ async fn user_timeline() -> impl Responder {
 
 #[get("/{username}/follow")]
 async fn follow_user() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
+    HelloTemplate { name: "AAAA" }
 }
 
 #[get("/{username}/unfollow")]
 async fn unfollow_user() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
+    return HelloTemplate { name: "AAAA" }
 }
 
 #[post("/add_message")]
@@ -198,26 +188,22 @@ async fn add_message() -> impl Responder {
 async fn login() -> impl Responder {
     FlashMessage::info("You were logged in!!").send();
     HttpResponse::TemporaryRedirect()
-        .insert_header((http::header::LOCATION, "/layout"))
+        .insert_header((http::header::LOCATION, "/"))
         .finish()
 }
 
-#[get("/layout")]
-async fn layout(messages: IncomingFlashMessages) -> impl Responder {
-    let g_mock = g_mock().unwrap();
-    let flash_messages : Vec<String> = messages.iter().map(|m : &FlashMessage| -> String {m.content().to_string()}).collect();
-    LayoutTemplateOld {user: Some(g_mock.user), flashes: flash_messages}
+fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
+    messages.iter().map(|m : &FlashMessage| -> String {m.content().to_string()}).collect()
 }
 
 #[get("/register")]
 async fn register() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
+    HelloTemplate { name: "RegisterPage" }
 }
 
 #[get("/logout")]
 async fn logout() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
-
+    HelloTemplate { name: "LogoutPage" } 
     // fn game() -> Result<()> {
     //     let conn = Connection::open("/tmp/test.db")?;
 
