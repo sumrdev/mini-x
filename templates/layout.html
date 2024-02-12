@@ -14,7 +14,7 @@
     <a href="">sign in</a>
   {% endif %}
   </div>
-    {% if flashes.is_empty() %}
+    {% if !flashes.is_empty() %}
       <ul class=flashes>
       {% for message in flashes %}
         <li>{{ message }}

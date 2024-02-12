@@ -1,8 +1,12 @@
 use actix_files as fs;
-use actix_web::{post, get, App, HttpServer,HttpResponse, Responder, cookie::Key};
+use actix_web::{post, get, http, App, HttpServer,HttpResponse, Responder, cookie::Key};
 use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
 use askama_actix::Template;
-use chrono::{DateTime, Utc};
+use actix_web_flash_messages::{
+    FlashMessage, IncomingFlashMessages,
+};
+use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageStore};
+use chrono::{DateTime, Utc, Duration};
 use rusqlite::{Connection, Result, params};
 use uuid::Uuid;
 
@@ -42,13 +46,14 @@ struct SimpleTemplate<'a> {
     flashes: Vec<String>
 }
 
-struct LayoutTemplateOld<'a> {
+#[derive(Template)]
+#[template(path = "../templates/layout.html")]
+struct LayoutTemplateOld {
     // should be used as a wrapper not sure how
-    title: &'a str,
-    body: &'a str,
-    g: Option<G>,                // Option is a nullable field user not defined
-    flashes: Option<Vec<Messages>>, //Option with messages aka options(vec) or just a vec
+    user: Option<User>,                // Option is a nullable field user not defined
+    flashes: Vec<String>, //Option with messages aka options(vec) or just a vec
 }
+
 // String
 
 //#[derive(Template)]
@@ -64,15 +69,22 @@ struct TimelineTemplate<'a> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    let signing_key = Key::generate(); // This will usually come from configuration!
+    let message_store = CookieMessageStore::builder(signing_key).build();
+    let message_framework = FlashMessagesFramework::builder(message_store).build();
+
+    HttpServer::new(move || {
         App::new()
-            .service(fs::Files::new("/static", "../static/").index_file("index.html"))
+            .service(fs::Files::new("/static", "./static/").index_file("index.html"))
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
                 .cookie_secure(false)
                 .build()
             )
+            .wrap(message_framework.clone())
             .service(timeline)
+            .service(login)
+            .service(layout)
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -184,7 +196,17 @@ async fn add_message() -> impl Responder {
 
 #[get("/login")]
 async fn login() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
+    FlashMessage::info("You were logged in!!").send();
+    HttpResponse::TemporaryRedirect()
+        .insert_header((http::header::LOCATION, "/layout"))
+        .finish()
+}
+
+#[get("/layout")]
+async fn layout(messages: IncomingFlashMessages) -> impl Responder {
+    let g_mock = g_mock().unwrap();
+    let flash_messages : Vec<String> = messages.iter().map(|m : &FlashMessage| -> String {m.content().to_string()}).collect();
+    LayoutTemplateOld {user: Some(g_mock.user), flashes: flash_messages}
 }
 
 #[get("/register")]

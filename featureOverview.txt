@@ -7,4 +7,3 @@
 - A user can log out
 - A user can post a tweet (record message)
 - Messages posted sequentially are recorded in the correct order (timeline)
-- 
