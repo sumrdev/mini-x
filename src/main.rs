@@ -1,16 +1,14 @@
 use actix_files as fs;
+use actix_session::{storage::CookieSessionStore, Session, SessionMiddleware};
 use actix_web::web;
-use actix_web::{post, get, http, App, HttpServer,HttpResponse, Responder, cookie::Key};
-use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
+use actix_web::{cookie::Key, get, http, post, App, HttpResponse, HttpServer, Responder};
+use actix_web_flash_messages::{storage::CookieMessageStore, FlashMessagesFramework};
+use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use askama_actix::Template;
-use actix_web_flash_messages::{
-    FlashMessage, IncomingFlashMessages,
-};
-use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageStore};
-use chrono::{DateTime, Utc, Duration};
-use rusqlite::{Connection, Result, params};
-use uuid::Uuid;
+use chrono::{DateTime, Duration, Utc};
+use rusqlite::{params, Connection, Result};
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Template)] // this will generate the code...
 #[template(path = "../templates/hello.html")] // using the template in this path, relative
@@ -66,8 +64,19 @@ struct LoginTemplate {
     user: Option<User>,
     //g: Option<G>,
     flashes: Vec<String>,
-    username: String,            // Is it not title
-    error: String,            // Is it not title
+    username: String, // Is it not title
+    error: String,    // Is it not title
+}
+
+#[derive(Template)]
+#[template(path = "../templates/register.html")]
+struct RegisterTemplate {
+    user: Option<User>,
+    email: String,
+    username: String,
+    password: String,
+    flashes: Vec<String>,
+    error: String,    // Is it not title
 }
 
 #[actix_web::main]
@@ -81,10 +90,11 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/static", "./static/").index_file("index.html"))
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
-                .cookie_secure(false)
-                .build()
+                    .cookie_secure(false)
+                    .build(),
             )
             .wrap(message_framework.clone())
+            .service(register)
             .service(timeline)
             .service(login)
             .service(post_login)
@@ -99,13 +109,13 @@ fn get_database_string() -> String {
     String::from("/tmp/mini-x.db")
 }
 
-fn connect_db() -> Result<Connection> {
-    Connection::open(get_database_string())
+fn connect_db() -> Connection {
+    Connection::open(get_database_string()).unwrap()
 }
 
 fn init_db() -> rusqlite::Result<()> {
     let schema_sql = std::fs::read_to_string("schema.sql").unwrap();
-    let conn = connect_db().unwrap();
+    let conn = connect_db();
 
     conn.execute_batch(&schema_sql)?;
     Ok(())
@@ -113,17 +123,20 @@ fn init_db() -> rusqlite::Result<()> {
 
 fn query_db(query: &str) {}
 
-fn get_user_id(username: &str) -> Result<usize, rusqlite::Error>{
-    let conn = connect_db().unwrap();
-    conn.execute("SELECT user_id FROM user WHERE username = ?1", params![username])
+fn get_user_id(username: &str) -> Result<usize, rusqlite::Error> {
+    let conn = connect_db();
+    conn.execute(
+        "SELECT user_id FROM user WHERE username = ?1",
+        params![username],
+    )
 }
 
 fn g(session: Session) -> Result<()> {
-    let connection = connect_db()?;
-  /*   if let Some(user_id) = session.get::<Uuid>("user_id")? {
-        
+    let connection = connect_db();
+    /*   if let Some(user_id) = session.get::<Uuid>("user_id")? {
+
     } else {
-        
+
     } */
     Ok(())
 }
@@ -160,6 +173,7 @@ fn get_messages() -> Vec<Messages> {
 #[get("/")]
 async fn timeline(flash_messages: IncomingFlashMessages) -> impl Responder {
     let g_mock = g_mock().unwrap();
+    init_db();
     return SimpleTemplate { 
         messages: get_messages(), 
         request_endpoint:"/", 
@@ -188,7 +202,7 @@ async fn follow_user() -> impl Responder {
 
 #[get("/{username}/unfollow")]
 async fn unfollow_user() -> impl Responder {
-    return HelloTemplate { name: "AAAA" }
+    return HelloTemplate { name: "AAAA" };
 }
 
 #[post("/add_message")]
@@ -200,40 +214,86 @@ async fn add_message() -> impl Responder {
 async fn login(flash_messages: IncomingFlashMessages) -> impl Responder {
     FlashMessage::info("You were logged in!!").send();
     /* HttpResponse::TemporaryRedirect()
-        .insert_header((http::header::LOCATION, "/"))
-        .finish() */
+    .insert_header((http::header::LOCATION, "/"))
+    .finish() */
     let g_mock = g_mock().unwrap();
-    return LoginTemplate { 
-        user: Some(g_mock.user ), 
+    return LoginTemplate {
+        user: Some(g_mock.user),
         flashes: get_flashes(flash_messages),
         error: String::from(""),
-        username: String::from("a")
+        username: String::from("a"),
     };
 }
 #[derive(Deserialize)]
-struct Info {
+struct LoginInfo {
     username: String,
 }
 
-#[post("/login")]
-async fn post_login( info: web::Form<Info>) -> impl Responder {
-    println!("{}", info.username);
+#[derive(Deserialize)]
+struct RegisterInfo {
+    username: String,
+    email: String,
+    password: String,
+}
 
-    HelloTemplate { name: "RegisterPage" }
+
+#[post("/login")]
+async fn post_login(info: web::Form<LoginInfo>) -> impl Responder {
+    let result =connect_db().execute(
+        "select * from user where
+        username = ?",
+        params![info.username],
+    ).unwrap();
+
+    if result == 0 {
+        FlashMessage::error("Invalid username").send();
+        return HelloTemplate {
+            name: "RegisterPage",
+        };
+    }
+    HelloTemplate {
+        name: "RegisterPage",
+    }
 }
 
 fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
-    messages.iter().map(|m : &FlashMessage| -> String {m.content().to_string()}).collect()
+    messages
+        .iter()
+        .map(|m: &FlashMessage| -> String { m.content().to_string() })
+        .collect()
 }
 
 #[get("/register")]
 async fn register() -> impl Responder {
-    HelloTemplate { name: "RegisterPage" }
+    let g_mock = g_mock().unwrap();
+    RegisterTemplate {
+        flashes: vec![],
+        error: String::from(""),
+        email: String::from(""),
+        username: String::from(""),
+        password: String::from(""),
+        user: Some(g_mock.user),
+    }
+}
+
+#[post("/register")]
+async fn post_register(info: web::Form<RegisterInfo>) -> impl Responder {
+
+    if info.username.len() == 0 || info.email.len() == 0 || info.password.len() == 0 {
+        FlashMessage::error("Invalid username").send();
+        return HelloTemplate {
+            name: "RegisterPage",
+        };
+    }
+    
+    HelloTemplate {
+        name: "RegisterPage",
+    }
 }
 
 #[get("/logout")]
 async fn logout() -> impl Responder {
-    HelloTemplate { name: "LogoutPage" } 
+    HelloTemplate { name: "LogoutPage" }
     // fn game() -> Result<()> {
     //     let conn = Connection::open("/tmp/test.db")?;
 
