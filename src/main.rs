@@ -36,7 +36,7 @@ struct Messages {
 // https://doc.rust-lang.org/std/vec/index.html
 // https://doc.rust-lang.org/std/option/enum.Option.html
 #[derive(Template)] // this will generate the code...
-#[template(path = "../templates/simpleTemplate.html")] // using the template in this path, relative
+#[template(path = "../templates/timeline.html")] // using the template in this path, relative
 struct SimpleTemplate<'a> {
     // should be used as a wrapper not sure how
     messages: Vec<Messages>, //Option with messages aka options(vec) or just a vec
@@ -45,7 +45,8 @@ struct SimpleTemplate<'a> {
     user: Option<User>,
     //g: Option<G>,
     followed: bool, //Unsure how to define this properly
-    flashes: Vec<String>
+    flashes: Vec<String>,
+    title: &'a str
 }
 
 //#[derive(Template)]
@@ -158,19 +159,15 @@ fn get_messages() -> Vec<Messages> {
 
 #[get("/")]
 async fn timeline(flash_messages: IncomingFlashMessages) -> impl Responder {
-
-    //if no user
-    //    Ok(HttpResponse::SeeOther()
-    // .header("Location", "/public")
-    // .finish());
     let g_mock = g_mock().unwrap();
     return SimpleTemplate { 
         messages: get_messages(), 
-        request_endpoint:"/aa", 
+        request_endpoint:"/", 
         profile_user: Some(User {user_id:Uuid::new_v4(), username:String::from("Name") }), 
         user: Some(g_mock.user ), 
         followed: false,
         flashes: get_flashes(flash_messages),
+        title: "Timeline"
     };
 }
 

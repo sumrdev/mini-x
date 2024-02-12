@@ -3,17 +3,17 @@
   {% if request_endpoint == "public_timeline" %}
     Public Timeline
   {% else if request_endpoint == "user_timeline" %}
-    {{ profile_user.username }}'s Timeline
+    {{ profile_user.as_ref().unwrap().username }}'s Timeline
   {% else %}
     My Timeline
   {% endif %}
 {% endblock %}
 {% block body %}
-  <h2>{{ self.title() }}</h2>
-  {% if g.user %}
+  <h2>{{ title }}</h2>
+  {% if user.is_some()%}
     {% if request_endpoint == "user_timeline" %}
       <div class=followstatus>
-      {% if g.user.user_id == profile_user.user_id %}
+      {% if user.as_ref().unwrap().user_id == profile_user.as_ref().unwrap().user_id %}
         This is you!
       {% else if followed %}
         You are currently following this user.
@@ -25,7 +25,7 @@
       </div>
     {% else if request_endpoint == "timeline" %}
       <div class=twitbox>
-        <h3>What's on your mind {{ g.user.username }}?</h3>
+        <h3>What's on your mind {{ user.as_ref().unwrap().username }}?</h3>
         <form action="" method=post>
           <p><input type=text name=text size=60><!--
           --><input type=submit value="Share">
@@ -38,7 +38,7 @@
     <li><img src="{{ message.email }}"><p>
       <strong><a href="">{{ message.username }}</a></strong>
       {{ message.text }}
-      <small>&mdash; {{ message.pub_date|datetimeformat }}</small>
+      <small>&mdash; {{ message.pub_date }}</small>
   {% else %}
     <li><em>There's no message so far.</em>
   {% endfor %}
