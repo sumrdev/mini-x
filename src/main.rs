@@ -3,7 +3,7 @@ use actix_web::{post, get, App, HttpServer,HttpResponse, Responder, cookie::Key}
 use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
 use askama_actix::Template;
 use chrono::{DateTime, Utc};
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, params};
 use uuid::Uuid;
 
 #[derive(Template)] // this will generate the code...
@@ -39,7 +39,7 @@ struct SimpleTemplate<'a> {
     user: Option<User>,
     //g: Option<G>,
     followed: bool, //Unsure how to define this properly
-
+    flashes: Vec<String>
 }
 
 struct LayoutTemplateOld<'a> {
@@ -66,13 +66,13 @@ struct TimelineTemplate<'a> {
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
+            .service(fs::Files::new("/static", "../static/").index_file("index.html"))
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
                 .cookie_secure(false)
                 .build()
             )
             .service(timeline)
-            .service(fs::Files::new("/static", "../static").index_file("index.html"))
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -80,7 +80,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn get_database_string() -> String {
-    "/tmp/mini-x.db".to_string()
+    String::from("/tmp/mini-x.db")
 }
 
 fn connect_db() -> Result<Connection> {
@@ -97,10 +97,19 @@ fn init_db() -> rusqlite::Result<()> {
 
 fn query_db(query: &str) {}
 
-fn get_user_id(username: &str) {}
+fn get_user_id(username: &str) -> Result<usize, rusqlite::Error>{
+    let conn = connect_db().unwrap();
+    let mut stmt = conn.execute("SELECT user_id FROM user WHERE username = ?1", params![username]);
+    return stmt;
+}
 
 fn g(session: Session) -> Result<()> {
     let connection = connect_db()?;
+  /*   if let Some(user_id) = session.get::<Uuid>("user_id")? {
+        
+    } else {
+        
+    } */
     Ok(())
 }
 
@@ -144,6 +153,7 @@ async fn timeline() -> impl Responder {
         profile_user: Some(User {user_id:Uuid::new_v4(), username:String::from("Name") }), 
         user: Some(g_mock.user ), 
         followed: false,
+        flashes: vec![]
     };
 }
 

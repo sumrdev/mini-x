@@ -1,20 +1,20 @@
 <!doctype html>
-<title>{% block title %}Welcome{% endblock %} | MiniTwit</title>
-<link rel=stylesheet type=text/css href="">
+<title>{% block title %}Welcome{% endblock %} | mini-x</title>
+<link rel=stylesheet type=text/css href="../static/style.css">
 <div class=page>
-  <h1>MiniTwit</h1>
+  <h1>mini-x</h1>
   <div class=navigation>
-  {% if g.user %}
+  {% if user.is_some() %}
     <a href="">my timeline</a> |
     <a href="">public timeline</a> |
-    <a href="">sign out [{{ g.user.username }}]</a>
+    <a href="">sign out [{{ user.as_ref().unwrap().username }}]</a>
   {% else %}
     <a href="">public timeline</a> |
     <a href="">sign up</a> |
     <a href="">sign in</a>
   {% endif %}
   </div>
-    {% if flashes %}
+    {% if flashes.is_empty() %}
       <ul class=flashes>
       {% for message in flashes %}
         <li>{{ message }}
@@ -25,6 +25,6 @@
   {% block body %}{% endblock %}
   </div>
   <div class=footer>
-    MiniTwit &mdash; A Rust Application
+    mini-x &mdash; a rusty application
   </div>
 </div>
