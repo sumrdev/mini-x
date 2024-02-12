@@ -1,0 +1,12 @@
+<h1> simple timeline </h1> 
+
+<ul class=messages>
+{% for message in messages %}
+  <li><img src="{{ message.email }}"><p>
+    <strong><a href="">{{ message.username }}</a></strong>
+    {{ message.text }}
+    <small>&mdash; {{ message.pub_date}}</small>
+{% else %}
+  <li><em>There's no message so far.</em>
+{% endfor %}
+</ul>

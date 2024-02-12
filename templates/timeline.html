@@ -1,8 +1,8 @@
 {% extends "layout.html" %}
 {% block title %}
-  {% if request.endpoint == "public_timeline" %}
+  {% if request_endpoint == "public_timeline" %}
     Public Timeline
-  {% else if request.endpoint == "user_timeline" %}
+  {% else if request_endpoint == "user_timeline" %}
     {{ profile_user.username }}'s Timeline
   {% else %}
     My Timeline
@@ -11,7 +11,7 @@
 {% block body %}
   <h2>{{ self.title() }}</h2>
   {% if g.user %}
-    {% if request.endpoint == "user_timeline" %}
+    {% if request_endpoint == "user_timeline" %}
       <div class=followstatus>
       {% if g.user.user_id == profile_user.user_id %}
         This is you!
@@ -23,7 +23,7 @@
         <a class=follow href="">Follow user</a>.
       {% endif %}
       </div>
-    {% else if request.endpoint == "timeline" %}
+    {% else if request_endpoint == "timeline" %}
       <div class=twitbox>
         <h3>What's on your mind {{ g.user.username }}?</h3>
         <form action="" method=post>
