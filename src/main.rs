@@ -1,4 +1,5 @@
 use actix_files as fs;
+use actix_web::web;
 use actix_web::{post, get, http, App, HttpServer,HttpResponse, Responder, cookie::Key};
 use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
 use askama_actix::Template;
@@ -9,6 +10,7 @@ use actix_web_flash_messages::{FlashMessagesFramework, storage::CookieMessageSto
 use chrono::{DateTime, Utc, Duration};
 use rusqlite::{Connection, Result, params};
 use uuid::Uuid;
+use serde::Deserialize;
 
 #[derive(Template)] // this will generate the code...
 #[template(path = "../templates/hello.html")] // using the template in this path, relative
@@ -84,6 +86,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(message_framework.clone())
             .service(timeline)
             .service(login)
+            .service(post_login)
             .service(logout)
     })
     .bind(("0.0.0.0", 8080))?
@@ -209,6 +212,17 @@ async fn login(flash_messages: IncomingFlashMessages) -> impl Responder {
         error: String::from(""),
         username: String::from("a")
     };
+}
+#[derive(Deserialize)]
+struct Info {
+    username: String,
+}
+
+#[post("/login")]
+async fn post_login( info: web::Form<Info>) -> impl Responder {
+    println!("{}", info.username);
+
+    HelloTemplate { name: "RegisterPage" }
 }
 
 fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {

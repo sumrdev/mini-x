@@ -15,6 +15,7 @@ chrono = "0.4.34"
 filters = "0.4.0"
 rusqlite = "0.30.0"
 actix-web-flash-messages = { version = "0.4", features = ["cookies"] }
+serde = "1.0.196"
 [dependencies.uuid]
 version = "1.7.0"
 features = [
