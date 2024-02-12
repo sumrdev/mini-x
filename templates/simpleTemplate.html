@@ -1,12 +1,34 @@
-<h1> simple timeline </h1> 
 
-<ul class=messages>
-{% for message in messages %}
-  <li><img src="{{ message.email }}"><p>
-    <strong><a href="">{{ message.username }}</a></strong>
-    {{ message.text }}
-    <small>&mdash; {{ message.pub_date}}</small>
-{% else %}
-  <li><em>There's no message so far.</em>
-{% endfor %}
-</ul>
+  {% if user.is_some()%}
+    {% if request_endpoint == "user_timeline" %}
+      <div class=followstatus>
+      {% if user.as_ref().unwrap().user_id == profile_user.as_ref().unwrap().user_id %}
+        This is you!
+      {% else if followed %}
+        You are currently following this user.
+        <a class=unfollow href="">Unfollow user</a>.
+      {% else %}
+        You are not yet following this user.
+        <a class=follow href="">Follow user</a>.
+      {% endif %}
+      </div>
+    {% else if request_endpoint == "timeline" %}
+      <div class=twitbox>
+        <h3>What's on your mind {{ user.as_ref().unwrap().username }}?</h3>
+        <form action="" method=post>
+          <p><input type=text name=text size=60><!--
+          --><input type=submit value="Share">
+        </form>
+      </div>
+    {% endif %}
+  {% endif %}
+  <ul class=messages>
+  {% for message in messages %}
+    <li><img src="{{ message.email }}"><p>
+      <strong><a href="">{{ message.username }}</a></strong>
+      {{ message.text }}
+      <small>&mdash; {{ message.pub_date }}</small>
+  {% else %}
+    <li><em>There's no message so far.</em>
+  {% endfor %}
+  </ul>

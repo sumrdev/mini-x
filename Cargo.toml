@@ -14,3 +14,12 @@ askama_actix = "0.14.0"
 chrono = "0.4.34"
 filters = "0.4.0"
 rusqlite = "0.30.0"
+[dependencies.uuid]
+version = "1.7.0"
+features = [
+    "v4",
+    "v7",
+    "js",
+]
+
+uuid = "1.7.0"
