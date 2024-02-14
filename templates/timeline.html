@@ -15,7 +15,7 @@
       <div class=followstatus>
       {% if user.as_ref().unwrap().user_id == profile_user.as_ref().unwrap().user_id %}
         This is you!
-      {% else if followed %}
+      {% else if followed.as_ref().unwrap() %}
         You are currently following this user.
         <a class=unfollow href="">Unfollow user</a>.
       {% else %}
