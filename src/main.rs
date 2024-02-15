@@ -16,7 +16,6 @@ use chrono::{DateTime, Utc};
 use md5::{Digest, Md5};
 use rusqlite::{params, Connection, Result};
 use serde::Deserialize;
-use uuid::Uuid;
 use pwhash::bcrypt;
 
 #[derive(Template)] // this will generate the code...
@@ -228,23 +227,6 @@ async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>)
 
 }
 
-/* async fn get_public_timeline() -> Result<()> {
-    connect_db().execute("select message.*, user.* from message, user
-    where message.flagged = 0 and message.author_id = user.user_id
-    order by message.pub_date desc limit 32")?;
-
-    // let iter = stmt.query_map([], |row| {
-    //         Ok(Messages {
-    //             text: row.get(0)?,
-    //             email: row.get(1)?,
-    //             username: row.get(2)?,
-
-    //         })
-    //     })?;
-
-    Ok(())
-}
- */
 #[get("/public")]
 async fn public_timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
     let user = get_user(user);
@@ -269,7 +251,7 @@ async fn public_timeline(flash_messages: IncomingFlashMessages, user: Option<Ide
     .map(|m| { 
         println!("{:?}",m);
 
-        return m.unwrap()
+        m.unwrap()
     })
     .collect();
 
