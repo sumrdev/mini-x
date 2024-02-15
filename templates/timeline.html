@@ -35,7 +35,7 @@
   {% endif %}
   <ul class=messages>
   {% for message in messages %}
-    <li><img src="{{ message.email }}"><p>
+    <li><img src="{{ message.gravatar_url }}"><p>
       <strong><a href="">{{ message.username }}</a></strong>
       {{ message.text }}
       <small>&mdash; {{ message.pub_date }}</small>

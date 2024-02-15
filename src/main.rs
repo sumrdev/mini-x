@@ -11,6 +11,7 @@ use actix_web_flash_messages::{storage::CookieMessageStore, FlashMessagesFramewo
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use askama_actix::Template;
 use chrono::{DateTime, Utc};
+use md5::{Digest, Md5};
 use rusqlite::{params, Connection, Result};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -36,6 +37,7 @@ struct Messages {
     email: String,
     username: String,
     pub_date: DateTime<Utc>,
+    gravatar_url: String
 }
 // https://doc.rust-lang.org/std/vec/index.html
 // https://doc.rust-lang.org/std/option/enum.Option.html
@@ -148,6 +150,14 @@ fn g_mock() -> Result<G> {
     })
 }
 
+fn gravatar_url(email: &str) -> String {
+    let hash = Md5::digest(email.trim().to_lowercase().as_bytes());
+    
+    let hash_str = format!("{:x}", hash);
+    
+    format!("https://www.gravatar.com/avatar/{}?d=identicon&s={}", hash_str, 48)
+}
+
 fn get_messages() -> Vec<Messages> {
     vec![
         Messages {
@@ -155,23 +165,36 @@ fn get_messages() -> Vec<Messages> {
             email: String::from("example@email.com"),
             username: String::from("user123"),
             pub_date: Utc::now(),
+            gravatar_url: String::from("")
         },
         Messages {
-            text: String::from("How are you?"),
+            text: String::from("How 
+            are you?"),
             email: String::from("another@email.com"),
             username: String::from("user456"),
             pub_date: Utc::now(),
+            gravatar_url: String::from("")
         },
     ]
 }
 
 #[get("/")]
-async fn timeline(flash_messages: IncomingFlashMessages, user: Identity) -> impl Responder {
+async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
     let g_mock = g_mock().unwrap();
+    if let Some(user) = user {
+    } else {
+        Redirect::to("/public").see_other();
+
+    }
+
+    let mut messages = get_messages();
     // you need to login on /register to see any page for now
-    FlashMessage::info(user.id().unwrap()).send();
+    for message in &mut messages {
+        message.gravatar_url = gravatar_url(&message.gravatar_url);
+    }
+    
     return TimelineTemplate { 
-        messages: get_messages(), 
+        messages: messages, 
         request_endpoint: "/", 
         profile_user: Some(User {user_id:Uuid::new_v4(), username:String::from("Name") }), 
         user: Some(g_mock.user ), 
@@ -226,7 +249,6 @@ async fn add_message() -> impl Responder {
 #[get("/login")]
 async fn login(flash_messages: IncomingFlashMessages) -> impl Responder {
     FlashMessage::info("You were logged in!!").send();
-
     let g_mock = g_mock().unwrap();
     return LoginTemplate {
         user: Some(g_mock.user),

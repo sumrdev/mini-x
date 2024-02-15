@@ -1106,6 +1106,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "md-5"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+dependencies = [
+ "cfg-if",
+ "digest 0.10.7",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1140,6 +1150,7 @@ dependencies = [
  "askama_actix",
  "chrono",
  "filters",
+ "md-5 0.10.6",
  "pwhash",
  "rusqlite",
  "serde",
@@ -1314,7 +1325,7 @@ dependencies = [
  "blowfish",
  "byteorder",
  "hmac 0.10.1",
- "md-5",
+ "md-5 0.9.1",
  "rand",
  "sha-1",
  "sha2 0.9.9",

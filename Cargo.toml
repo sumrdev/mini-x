@@ -18,6 +18,7 @@ actix-web-flash-messages = { version = "0.4", features = ["cookies"] }
 serde = "1.0.196"
 pwhash = "1"
 actix-identity = "0.7.0"
+md-5 = "0.10.6"
 [dependencies.uuid]
 version = "1.7.0"
 features = [
