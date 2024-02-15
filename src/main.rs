@@ -301,15 +301,22 @@ async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>,) -> im
 }
 
 #[get("/login")]
-async fn login(flash_messages: IncomingFlashMessages) -> impl Responder {
-    FlashMessage::info("You were logged in!!").send();
-    let g_mock = g_mock().unwrap();
-    return LoginTemplate {
-        user: Some(g_mock.user),
-        flashes: get_flashes(flash_messages),
-        error: String::from(""),
-        username: String::from("a"),
-    };
+async fn login(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
+    if let Some(_) = user {
+        FlashMessage::info("You are already logged in").send();
+        HttpResponse::TemporaryRedirect()
+        .append_header((header::LOCATION, "/"))
+        .finish()
+    }
+    else {
+        let rendered = LoginTemplate {
+            user: None,
+            flashes: get_flashes(flash_messages),
+            error: String::from(""),
+            username: String::from(""),
+        }.render().unwrap();
+        HttpResponse::Ok().body(rendered)
+    }
 }
 
 #[derive(Deserialize)]
