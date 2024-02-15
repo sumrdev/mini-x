@@ -1,6 +1,6 @@
 
 use actix_files as fs;
-use actix_session::{storage::CookieSessionStore, Session, SessionMiddleware};
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::http::{self, header, Method, StatusCode};
 use actix_web::web::{self, method, Redirect};
 use actix_identity::IdentityMiddleware;
@@ -25,6 +25,8 @@ struct HelloTemplate<'a> {
     name: &'a str, // the field name should match the variable name
                    // in your template
 }
+
+#[derive(Clone)]
 struct User {
     user_id: i32,
     username: String,
@@ -41,16 +43,15 @@ struct Messages {
     pub_date: DateTime<Utc>,
     gravatar_url: String
 }
-// https://doc.rust-lang.org/std/vec/index.html
-// https://doc.rust-lang.org/std/option/enum.Option.html
+
 #[derive(Template)]
 #[template(path = "../templates/timeline.html")]
 struct TimelineTemplate<'a> {
-    messages: Vec<Messages>, // Vec<Message>, dynamic array of message structs
+    messages: Vec<Messages>, 
     user: Option<User>,
-    request_endpoint: &'a str, //just an URL does not need to be strict
+    request_endpoint: &'a str, 
     profile_user: Option<User>,
-    followed: Option<bool>, //Unsure how to define this properly
+    followed: Option<bool>, 
     flashes: Vec<String>,
     title: String
 }
@@ -60,9 +61,9 @@ struct TimelineTemplate<'a> {
 struct LoginTemplate {
     user: Option<User>,
     //g: Option<G>,
+    error: String,
     flashes: Vec<String>,
-    username: String, // Is it not title
-    error: String,    // Is it not title
+    username: String, 
 }
 
 #[derive(Template)]
@@ -73,7 +74,25 @@ struct RegisterTemplate {
     username: String,
     password: String,
     flashes: Vec<String>,
-    error: String,    // Is it not title
+    error: String,
+}
+
+#[derive(Deserialize)]
+struct MessageInfo {
+    text: String,
+}
+
+#[derive(Deserialize)]
+struct LoginInfo {
+    username: String,
+    password: String,
+}
+
+#[derive(Deserialize)]
+struct RegisterInfo {
+    username: String,
+    email: String,
+    password: String,
 }
 
 #[actix_web::main]
@@ -103,7 +122,7 @@ async fn main() -> std::io::Result<()> {
             .service(unfollow_user)
             .service(add_message)
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", 5000))?
     .run()
     .await
 }
@@ -123,8 +142,6 @@ fn init_db() -> rusqlite::Result<()> {
     conn.execute_batch(&schema_sql)?;
     Ok(())
 }
-
-fn query_db(query: &str) {}
 
 fn get_user_id(username: &str) -> i32 {
     let conn = connect_db();
@@ -157,23 +174,13 @@ fn gravatar_url(email: &str) -> String {
     format!("https://www.gravatar.com/avatar/{}?d=identicon&s={}", hash_str, 48)
 }
 
-/* fn get_messages() -> Vec<Messages> {
-    vec![
-        Messages {
-            text: String::from("Hello, world!"),
-            username: String::from("user123"),
-            pub_date: Utc::now(),
-            gravatar_url: String::from("")
-        },
-        Messages {
-            text: String::from("How 
-            are you?"),
-            username: String::from("user456"),
-            pub_date: Utc::now(),
-            gravatar_url: String::from("")
-        },
-    ]
-} */
+fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
+    messages
+        .iter()
+        .map(|m: &FlashMessage| -> String { m.content().to_string() })
+        .collect()
+}
+
 
 #[get("/")]
 async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
@@ -193,7 +200,7 @@ async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>)
         let query_result = stmt.query_map([u.clone(),u, 32], |row| {
             Ok(Messages {
                 text: row.get(2)?,
-                gravatar_url: String::from(""),
+                gravatar_url: gravatar_url(&row.get::<_, String>(7)?),
                 username: row.get(6)?,
                 pub_date: {
                     let date_str: String = row.get(3)?;
@@ -211,7 +218,7 @@ async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>)
         let rendered = TimelineTemplate { 
             messages, 
             request_endpoint: "timeline", 
-            profile_user: Some(User {user_id: 0, username:String::from("Name"), email: String::from("mail2") }), 
+            profile_user: None, 
             user: Some(user),
             followed: Some(false),
             flashes: get_flashes(flash_messages),
@@ -238,7 +245,7 @@ async fn public_timeline(flash_messages: IncomingFlashMessages, user: Option<Ide
     let query_result = stmt.query_map([], |row| {
         Ok(Messages {
             text: row.get(2)?,
-            gravatar_url: String::from(""),
+            gravatar_url: gravatar_url(&row.get::<_, String>(7)?),
             username: row.get(6)?,
             pub_date: {
                 let date_str: String = row.get(3)?;
@@ -255,12 +262,11 @@ async fn public_timeline(flash_messages: IncomingFlashMessages, user: Option<Ide
     })
     .collect();
 
-
-    return TimelineTemplate { 
-        messages: messages, 
+    TimelineTemplate { 
+        messages, 
         request_endpoint: "/", 
-        profile_user: Some(User {user_id:1, username:String::from("Name"), email:String::from("email")}),
-        user: user, 
+        profile_user: None,
+        user, 
         followed: Some(false),
         flashes: get_flashes(flash_messages),
         title: String::from("")
@@ -268,25 +274,96 @@ async fn public_timeline(flash_messages: IncomingFlashMessages, user: Option<Ide
 }
 
 #[get("/{username}")]
-async fn user_timeline(path: web::Path<(String,)>) -> impl Responder {
+async fn user_timeline(path: web::Path<(String,)>, user: Option<Identity>, flash_messages: IncomingFlashMessages) -> impl Responder {
     let username = &path.0;
-    println!("{}", username.clone());
-    return HelloTemplate { name: "aaa" };
+    let conn = connect_db();
+    let profile_user = conn.query_row("select * from user where username = ?", params![username], |row| {
+        Ok(User {
+            user_id: row.get(0)?,
+            username: row.get(1)?,
+            email: row.get(2)?,
+        })
+    });
+    if let Ok(profile_user) = profile_user {
+        let mut followed = false;
+        let user = get_user(user);
+        if let Some(user) = user.clone() {
+            followed = conn.query_row(
+                "select 1 from follower where follower.who_id = ? and follower.whom_id = ?", 
+                params![user.user_id, profile_user.user_id], 
+                |_| {Ok(())}
+            ).is_ok();
+        }
+        let conn = connect_db();
+        let mut stmt = conn.prepare("
+            select message.*, user.* from message, user where
+            user.user_id = message.author_id and user.user_id = ?
+            order by message.pub_date desc limit ?").unwrap();
+        let query_result = stmt.query_map([profile_user.user_id, 30], |row| {
+            Ok(Messages {
+                text: row.get(2)?,
+                gravatar_url: gravatar_url(&row.get::<_, String>(7)?),
+                username: row.get(6)?,
+                pub_date: {
+                    let date_str: String = row.get(3)?;
+                    chrono::DateTime::parse_from_rfc3339(&date_str).unwrap().to_utc()
+                }
+            })
+        });
+
+        let messages : Vec<Messages> = query_result.unwrap()
+        .map(|m| { m.unwrap()})
+        .collect();
+
+        
+        let rendered = TimelineTemplate { 
+            messages, 
+            request_endpoint: "timeline", 
+            profile_user: Some(profile_user),
+            user,
+            followed: Some(followed),
+            flashes: get_flashes(flash_messages),
+            title: String::from("Timeline")
+        }.render().unwrap();
+        HttpResponse::Ok().body(rendered)
+    }
+    else {
+        return HttpResponse::NotFound().finish();
+    }
 }
 
 #[get("/{username}/follow")]
-async fn follow_user() -> impl Responder {
-    HelloTemplate { name: "AAAA" }
+async fn follow_user(user: Option<Identity>, path: web::Path<String>, _request: HttpRequest) -> impl Responder {
+    if let Some(_current_user) = user {
+        let _target_username = path.clone();
+        let _target_id = get_user_id(&_target_username);
+        let _conn = connect_db();
+        let sql = "insert into follower (who_id, whom_id) values (?, ?)";
+        let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
+        
+    } else {
+        return HttpResponse::Found()
+    .append_header((header::LOCATION, "User not found")).finish()
+    }
+    return HttpResponse::Found()
+    .append_header((header::LOCATION, format!("/{}", path))).finish()
 }
 
 #[get("/{username}/unfollow")]
-async fn unfollow_user() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
-}
-
-#[derive(Deserialize)]
-struct MessageInfo {
-    text: String,
+async fn unfollow_user(user: Option<Identity>, path: web::Path<String>, _request: HttpRequest) -> impl Responder {
+    if let Some(_current_user) = user {
+        let _target_username = path.clone();
+        let _target_id = get_user_id(&_target_username);
+        let _conn = connect_db();
+        let sql = "delete from follower where who_id=? and whom_id=?";
+        let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
+        
+    } else {
+        return HttpResponse::Found()
+    .append_header((header::LOCATION, "User not found")).finish()
+    }
+    return HttpResponse::Found()
+    .append_header((header::LOCATION, format!("/{}", path))).finish()
 }
 
 #[post("/add_message")]
@@ -295,6 +372,7 @@ async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>) -> imp
     if let Some(user) = user {
         let _ = connect_db().execute("insert into message (author_id, text, pub_date, flagged)
         values (?, ?, ?, 0)", params![user.id().unwrap(),msg.text, Utc::now().to_rfc3339()]);
+        FlashMessage::info("Your message was recorded").send();
         return HttpResponse::Found()
         .append_header((header::LOCATION, "/"))
         .finish()
@@ -323,19 +401,6 @@ async fn login(flash_messages: IncomingFlashMessages, user: Option<Identity>) ->
     }
 }
 
-#[derive(Deserialize)]
-struct LoginInfo {
-    username: String,
-    password: String,
-}
-
-#[derive(Deserialize)]
-struct RegisterInfo {
-    username: String,
-    email: String,
-    password: String,
-}
-
 #[post("/login")]
 async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Responder {
     let result : Result<String> = connect_db()
@@ -350,6 +415,7 @@ async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Re
             // Successful login
             let user_id = get_user_id(&info.username);
             let _ = Identity::login(&request.extensions(), user_id.to_string());
+            FlashMessage::info("You were logged in").send();
             return Redirect::to("/").see_other()
         }
     }
@@ -357,13 +423,6 @@ async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Re
     // Password incorrect
     FlashMessage::error("Invalid username or password").send();
     return Redirect::to("/login").see_other();
-}
-
-fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
-    messages
-        .iter()
-        .map(|m: &FlashMessage| -> String { m.content().to_string() })
-        .collect()
 }
 
 #[get("/register")]
@@ -397,10 +456,8 @@ async fn post_register(info: web::Form<RegisterInfo>, request: HttpRequest ) -> 
         FlashMessage::error("Invalid info").send();
         return Redirect::to("/register").see_other()
     }
-    let user_id = get_user_id(&info.username);
-    
-    Identity::login(&request.extensions(), user_id.to_string()).unwrap();
-    Redirect::to("/").see_other()
+    FlashMessage::info("You were successfully registered and can login now").send();
+    Redirect::to("/login").see_other()
 }
 
 #[get("/logout")]
