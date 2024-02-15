@@ -1,34 +1,32 @@
 {% extends "layout.html" %}
 {% block title %}
-  {% if request.endpoint == 'public_timeline' %}
+  {% if request_endpoint == "public_timeline" %}
     Public Timeline
-  {% elif request.endpoint == 'user_timeline' %}
-    {{ profile_user.username }}'s Timeline
+  {% else if request_endpoint == "user_timeline" %}
+    {{ profile_user.as_ref().unwrap().username }}'s Timeline
   {% else %}
     My Timeline
   {% endif %}
 {% endblock %}
 {% block body %}
-  <h2>{{ self.title() }}</h2>
-  {% if g.user %}
-    {% if request.endpoint == 'user_timeline' %}
+  <h2>{{ title }}</h2>
+  {% if user.is_some()%}
+    {% if request_endpoint == "user_timeline" %}
       <div class=followstatus>
-      {% if g.user.user_id == profile_user.user_id %}
+      {% if user.as_ref().unwrap().user_id == profile_user.as_ref().unwrap().user_id %}
         This is you!
-      {% elif followed %}
+      {% else if followed.as_ref().unwrap() %}
         You are currently following this user.
-        <a class=unfollow href="{{ url_for('unfollow_user', username=profile_user.username)
-          }}">Unfollow user</a>.
+        <a class=unfollow href="/{{profile_user.as_ref().unwrap().username}}/unfollow">Unfollow user</a>.
       {% else %}
         You are not yet following this user.
-        <a class=follow href="{{ url_for('follow_user', username=profile_user.username)
-          }}">Follow user</a>.
+        <a class=follow href="/{{profile_user.as_ref().unwrap().username}}/follow">Follow user</a>.
       {% endif %}
       </div>
-    {% elif request.endpoint == 'timeline' %}
+    {% else if request_endpoint == "timeline" %}
       <div class=twitbox>
-        <h3>What's on your mind {{ g.user.username }}?</h3>
-        <form action="{{ url_for('add_message') }}" method=post>
+        <h3>What's on your mind {{ user.as_ref().unwrap().username }}?</h3>
+        <form action="/add_message" method=post>
           <p><input type=text name=text size=60><!--
           --><input type=submit value="Share">
         </form>
@@ -37,11 +35,10 @@
   {% endif %}
   <ul class=messages>
   {% for message in messages %}
-    <li><img src="{{ message.email|gravatar(size=48) }}"><p>
-      <strong><a href="{{ url_for('user_timeline', username=message.username)
-      }}">{{ message.username }}</a></strong>
+    <li><img src="{{ message.gravatar_url }}"><p>
+      <strong><a href="{{ message.username }}">{{ message.username }}</a></strong>
       {{ message.text }}
-      <small>&mdash; {{ message.pub_date|datetimeformat }}</small>
+      <small>&mdash; {{ message.pub_date }}</small>
   {% else %}
     <li><em>There's no message so far.</em>
   {% endfor %}
