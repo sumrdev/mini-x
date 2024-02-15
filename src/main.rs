@@ -1,4 +1,5 @@
 
+use std::path::Path;
 use actix_files as fs;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::http::{self, header, Method, StatusCode};
@@ -97,7 +98,10 @@ struct RegisterInfo {
 }
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> std::io::Result<()> {    
+    if !std::fs::metadata(get_database_string()).is_ok() {
+        let _ = init_db();
+    }
     let signing_key = Key::generate(); // This will usually come from configuration!
     let message_store = CookieMessageStore::builder(signing_key).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
@@ -188,7 +192,6 @@ async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>)
     if let Some(user) = get_user(user) {
         //let mut messages = get_messages();
         // you need to login on /register to see any page for now
-
         let u = user.user_id;
         let conn = connect_db();
         let prepared_statement = conn.prepare("select message.*, user.* from message, user
@@ -439,7 +442,6 @@ async fn register() -> impl Responder {
 }
 
 fn check_info(info: web::Form<RegisterInfo>, username: String) {
-    
 }
 
 #[post("/register")]
