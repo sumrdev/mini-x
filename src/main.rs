@@ -1,5 +1,10 @@
+use std::future::IntoFuture;
+
 use actix_files as fs;
+use actix_identity::error::GetIdentityError;
 use actix_session::{storage::CookieSessionStore, Session, SessionMiddleware};
+use actix_web::http::{header, StatusCode};
+use actix_web::rt::System;
 use actix_web::web::{self, Redirect};
 use actix_identity::IdentityMiddleware;
 use actix_identity::Identity;
@@ -25,8 +30,9 @@ struct HelloTemplate<'a> {
                    // in your template
 }
 struct User {
-    user_id: Uuid,
+    user_id: i32,
     username: String,
+    email: String
 }
 struct G {
     db: Connection,
@@ -79,7 +85,6 @@ async fn main() -> std::io::Result<()> {
     let signing_key = Key::generate(); // This will usually come from configuration!
     let message_store = CookieMessageStore::builder(signing_key).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
-    let _ = init_db();
     HttpServer::new(move || {
         App::new()
             .wrap(IdentityMiddleware::default())
@@ -93,9 +98,14 @@ async fn main() -> std::io::Result<()> {
             .service(register)
             .service(post_register)
             .service(timeline)
+            .service(public_timeline)
             .service(login)
             .service(post_login)
             .service(logout)
+            .service(user_timeline)
+            .service(follow_user)
+            .service(unfollow_user)
+            .service(add_message)
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -128,14 +138,21 @@ fn get_user_id(username: &str) -> Result<usize, rusqlite::Error> {
     )
 }
 
-fn g(session: Session) -> Result<()> {
-    let connection = connect_db();
-    /*   if let Some(user_id) = session.get::<Uuid>("user_id")? {
+fn g(user: Identity) -> Option<User> {
+    let conn = connect_db();
+    if let Ok(user_id) = user.id() {
 
-    } else {
-
-    } */
-    Ok(())
+        
+        let user = conn.query_row("select * from user where user_id = ?", params![user_id], |row| {
+            Ok(Some(User {
+                user_id: row.get(0)?,
+                username: row.get(1)?,
+                email: row.get(2)?,
+            }))
+        }).unwrap();
+        return user;
+    }
+    None
 }
 
 fn g_mock() -> Result<G> {
@@ -144,8 +161,9 @@ fn g_mock() -> Result<G> {
     Ok(G {
         db: connection,
         user: User {
-            user_id: Uuid::new_v4(),
+            user_id: 5,
             username: String::from("Test Name"),
+            email: String::from("email@mail.com")
         },
     })
 }
@@ -182,26 +200,36 @@ fn get_messages() -> Vec<Messages> {
 async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
     let g_mock = g_mock().unwrap();
     if let Some(user) = user {
+        let mut messages = get_messages();
+        // you need to login on /register to see any page for now
+        for message in &mut messages {
+            message.gravatar_url = gravatar_url(&message.gravatar_url);
+        }
+        println!("{:?}",user.id());
+        
+        return TimelineTemplate { 
+            messages: messages, 
+            request_endpoint: "/", 
+            profile_user: Some(User {user_id: 0, username:String::from("Name"), email: String::from("mail2") }), 
+            user: Some(g_mock.user ), 
+            followed: Some(false),
+            flashes: get_flashes(flash_messages),
+            title: "Hello USER?"
+        }
     } else {
         Redirect::to("/public").see_other();
-
+        let mut messages = get_messages();
+        return TimelineTemplate { 
+            messages: messages, 
+            request_endpoint: "/", 
+            profile_user: Some(User {user_id:1, username:String::from("Name"), email:String::from("email")}), 
+            user: Some(g_mock.user ), 
+            followed: Some(false),
+            flashes: get_flashes(flash_messages),
+            title: ""
+        }
     }
 
-    let mut messages = get_messages();
-    // you need to login on /register to see any page for now
-    for message in &mut messages {
-        message.gravatar_url = gravatar_url(&message.gravatar_url);
-    }
-    
-    return TimelineTemplate { 
-        messages: messages, 
-        request_endpoint: "/", 
-        profile_user: Some(User {user_id:Uuid::new_v4(), username:String::from("Name") }), 
-        user: Some(g_mock.user ), 
-        followed: Some(false),
-        flashes: get_flashes(flash_messages),
-        title: "Timeline"
-    };
 }
 
 async fn get_public_timeline() -> Result<()> {
@@ -222,13 +250,25 @@ async fn get_public_timeline() -> Result<()> {
 }
 
 #[get("/public")]
-async fn public_timeline() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
+async fn public_timeline(flash_messages: IncomingFlashMessages) -> impl Responder {
+    let g_mock = g_mock().unwrap();
+    let mut messages = get_messages();
+    return TimelineTemplate { 
+        messages: messages, 
+        request_endpoint: "/", 
+        profile_user: Some(User {user_id:1, username:String::from("Name"), email:String::from("email")}),
+        user: Some(g_mock.user ), 
+        followed: Some(false),
+        flashes: get_flashes(flash_messages),
+        title: ""
+    }
 }
 
 #[get("/{username}")]
-async fn user_timeline() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
+async fn user_timeline(path: web::Path<(String,)>) -> impl Responder {
+    let username = &path.0;
+    println!("{}", username.clone());
+    return HelloTemplate { name: "aaa" };
 }
 
 #[get("/{username}/follow")]
@@ -241,9 +281,23 @@ async fn unfollow_user() -> impl Responder {
     return HelloTemplate { name: "AAAA" };
 }
 
+#[derive(Deserialize)]
+struct MessageInfo {
+    text: String,
+}
+
 #[post("/add_message")]
-async fn add_message() -> impl Responder {
-    return HelloTemplate { name: "AAAA" };
+async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>,) -> impl Responder {
+    if let Some(user) = user {
+        let _ = connect_db().execute("insert into message (author_id, text, pub_date, flagged)
+        values (?, ?, ?, 0)", params![user.id().unwrap(),msg.text, Utc::now().to_rfc3339()]);
+        return HttpResponse::TemporaryRedirect()
+        .append_header((header::LOCATION, "/"))
+        .finish();
+    }
+    HttpResponse::Unauthorized()
+     .status(StatusCode::UNAUTHORIZED) 
+     .finish()
 }
 
 #[get("/login")]
@@ -261,6 +315,7 @@ async fn login(flash_messages: IncomingFlashMessages) -> impl Responder {
 #[derive(Deserialize)]
 struct LoginInfo {
     username: String,
+    password: String,
 }
 
 #[derive(Deserialize)]
@@ -271,22 +326,25 @@ struct RegisterInfo {
 }
 
 #[post("/login")]
-async fn post_login(info: web::Form<LoginInfo>) -> impl Responder {
-    let result =connect_db().execute(
-        "select * from user where
-        username = ?",
-        params![info.username],
-    ).unwrap();
+async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Responder {
+    let result : Result<String> = connect_db()
+        .query_row(
+            "select pw_hash from user where username = ?",
+            params![info.username],
+            |row| row.get(0)
+        );
+    if let Ok(stored_hash) = result {
+        if bcrypt::verify(info.password.clone(), &stored_hash) {
+            // Successful login
+            Identity::login(&request.extensions(), info.username.clone());
+            return Redirect::to("/").see_other()
+        }
+    }
 
-    if result == 0 {
-        FlashMessage::error("Invalid username").send();
-        return HelloTemplate {
-            name: "RegisterPage",
-        };
-    }
-    HelloTemplate {
-        name: "RegisterPage",
-    }
+    // Password incorrect
+    FlashMessage::error("Invalid username or password").send();
+    return Redirect::to("/login").see_other();
+    
 }
 
 fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
@@ -343,9 +401,8 @@ async fn cookie_test(session: Session) -> impl Responder {
 }
 
 #[get("/logout")]
-async fn logout(session: Session, user: Identity) -> impl Responder {
+async fn logout(user: Identity) -> impl Responder {
     FlashMessage::info("You were logged out").send();
     user.logout();
-    session.purge();
-    Redirect::to("/").see_other()
+    Redirect::to("/public").see_other()
 }
