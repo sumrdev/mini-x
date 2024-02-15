@@ -17,10 +17,10 @@
         This is you!
       {% else if followed.as_ref().unwrap() %}
         You are currently following this user.
-        <a class=unfollow href="">Unfollow user</a>.
+        <a class=unfollow href="/{{profile_user.as_ref().unwrap().username}}/unfollow">Unfollow user</a>.
       {% else %}
         You are not yet following this user.
-        <a class=follow href="">Follow user</a>.
+        <a class=follow href="/{{profile_user.as_ref().unwrap().username}}/follow">Follow user</a>.
       {% endif %}
       </div>
     {% else if request_endpoint == "timeline" %}

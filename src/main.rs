@@ -93,6 +93,7 @@ struct RegisterInfo {
     username: String,
     email: String,
     password: String,
+    password2: String,
 }
 
 #[actix_web::main]
@@ -318,7 +319,7 @@ async fn user_timeline(path: web::Path<(String,)>, user: Option<Identity>, flash
         
         let rendered = TimelineTemplate { 
             messages, 
-            request_endpoint: "timeline", 
+            request_endpoint: "user_timeline", 
             profile_user: Some(profile_user),
             user,
             followed: Some(followed),
@@ -437,12 +438,26 @@ async fn register() -> impl Responder {
     }
 }
 
+fn check_info(info: web::Form<RegisterInfo>, username: String) {
+    
+}
+
 #[post("/register")]
 async fn post_register(info: web::Form<RegisterInfo>, request: HttpRequest ) -> impl Responder {
 
     if info.username.len() == 0 || info.email.len() == 0 || info.password.len() == 0 {
         FlashMessage::error("Missing username email or password").send();
         return Redirect::to("/register").see_other()
+    }
+
+    if info.username.len() == 0 {
+        FlashMessage::error("You have to enter a username").send();
+    } else if info.email.len() == 0 {
+        FlashMessage::error("You have to enter a valid email address").send();
+    } else if info.password.len() == 0 {
+        FlashMessage::error("You have to enter a password").send();
+    } else if info.password != info.password2 {
+        FlashMessage::error("The two passwords do not match").send();
     }
 
     let hash = bcrypt::hash(info.password.clone()).unwrap();
