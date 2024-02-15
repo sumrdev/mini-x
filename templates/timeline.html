@@ -26,7 +26,7 @@
     {% else if request_endpoint == "timeline" %}
       <div class=twitbox>
         <h3>What's on your mind {{ user.as_ref().unwrap().username }}?</h3>
-        <form action="" method=post>
+        <form action="/add_message" method=post>
           <p><input type=text name=text size=60><!--
           --><input type=submit value="Share">
         </form>
@@ -36,7 +36,7 @@
   <ul class=messages>
   {% for message in messages %}
     <li><img src="{{ message.gravatar_url }}"><p>
-      <strong><a href="">{{ message.username }}</a></strong>
+      <strong><a href="{{ message.username }}">{{ message.username }}</a></strong>
       {{ message.text }}
       <small>&mdash; {{ message.pub_date }}</small>
   {% else %}
