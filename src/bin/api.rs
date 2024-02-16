@@ -2,11 +2,11 @@
 use std::path::Path;
 use actix_files as fs;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
+use actix_web::error::ErrorBadRequest;
 use actix_web::http::{self, header, Method, StatusCode};
 use actix_web::web::{self, method, Redirect};
 use actix_identity::IdentityMiddleware;
 use actix_identity::Identity;
-
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -15,8 +15,8 @@ use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use askama_actix::Template;
 use chrono::{DateTime, Utc};
 use md5::{Digest, Md5};
-use rusqlite::{params, Connection, Result};
-use serde::Deserialize;
+use rusqlite::{params, Connection, OptionalExtension, Result};
+use serde::{Deserialize, Serialize};
 use pwhash::bcrypt;
 
 #[derive(Clone)]
@@ -86,7 +86,6 @@ struct RegisterInfo {
     username: String,
     email: String,
     password: String,
-    password2: String,
 }
 
 #[actix_web::main]
@@ -119,7 +118,7 @@ async fn main() -> std::io::Result<()> {
             .service(unfollow_user)
             .service(add_message)
     })
-    .bind(("0.0.0.0", 5001))?
+    .bind(("0.0.0.0", 5002))?
     .run()
     .await
 }
@@ -436,37 +435,50 @@ async fn register() -> impl Responder {
 fn check_info(info: web::Form<RegisterInfo>, username: String) {
 }
 
+
+#[derive(Serialize)]
+struct RegisterError {
+    status: i32,
+    error_msg: String
+}
+
 #[post("/register")]
-async fn post_register(info: web::Form<RegisterInfo>, request: HttpRequest ) -> impl Responder {
+async fn post_register(info: web::Json<RegisterInfo>) -> impl Responder {
 
-    if info.username.len() == 0 || info.email.len() == 0 || info.password.len() == 0 {
-        FlashMessage::error("Missing username email or password").send();
-        return Redirect::to("/register").see_other()
-    }
+    let conn = connect_db();
 
+    let user_exists: Option<i32> = conn.query_row("SELECT user_id FROM user WHERE username = ?1", params![info.username], |row| { row.get(0)}).optional().unwrap();
+    
+    let error = 
     if info.username.len() == 0 {
-        FlashMessage::error("You have to enter a username").send();
+        Some(String::from("You have to enter a username"))
     } else if info.email.len() == 0 {
-        FlashMessage::error("You have to enter a valid email address").send();
+        Some(String::from("You have to enter a valid email address"))
     } else if info.password.len() == 0 {
-        FlashMessage::error("You have to enter a password").send();
-    } else if info.password != info.password2 {
-        FlashMessage::error("The two passwords do not match").send();
-    }
+        Some(String::from("You have to enter a password"))
+    } else if let Some(_) = user_exists {
+        Some(String::from("The username is already taken"))
+    } else {
+        None
+    };
 
     let hash = bcrypt::hash(info.password.clone()).unwrap();
 
-    let result =connect_db().execute(
+    let _ = conn.execute(
         "insert into user (
             username, email, pw_hash) values (?, ?, ?)",
         params![info.username, info.email, hash ],
-    ).unwrap();
-    if result == 0 {
-        FlashMessage::error("Invalid info").send();
-        return Redirect::to("/register").see_other()
+    );
+
+    
+    if let Some(err_msg) = error {
+        let reg_err = RegisterError {status: 400, error_msg: err_msg.to_string()};
+        HttpResponse::BadRequest().json(reg_err)
     }
-    FlashMessage::info("You were successfully registered and can login now").send();
-    Redirect::to("/login").see_other()
+    else {
+        HttpResponse::NoContent().json(String::from(""))
+    }
+    
 }
 #[get("/logout")]
 async fn logout(user: Identity) -> impl Responder {
