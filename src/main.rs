@@ -19,14 +19,6 @@ use rusqlite::{params, Connection, Result};
 use serde::Deserialize;
 use pwhash::bcrypt;
 
-#[derive(Template)] // this will generate the code...
-#[template(path = "../templates/hello.html")] // using the template in this path, relative
-struct HelloTemplate<'a> {
-    // the name of the struct can be anything
-    name: &'a str, // the field name should match the variable name
-                   // in your template
-}
-
 #[derive(Clone)]
 struct User {
     user_id: i32,
