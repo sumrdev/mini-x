@@ -19,12 +19,3 @@ serde = "1.0.196"
 pwhash = "1"
 actix-identity = "0.7.0"
 md-5 = "0.10.6"
-[dependencies.uuid]
-version = "1.7.0"
-features = [
-    "v4",
-    "v7",
-    "js",
-]
-
-uuid = "1.7.0"
