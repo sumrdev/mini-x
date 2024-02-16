@@ -1,93 +1,21 @@
-
-use std::path::Path;
+mod template_structs;
+use template_structs::structs::*;
 use actix_files as fs;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::http::{self, header, Method, StatusCode};
-use actix_web::web::{self, method, Redirect};
+use actix_web::http::{ header, StatusCode};
+use actix_web::web::{self, Redirect};
 use actix_identity::IdentityMiddleware;
 use actix_identity::Identity;
-
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
 use actix_web_flash_messages::{storage::CookieMessageStore, FlashMessagesFramework};
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use askama_actix::Template;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use md5::{Digest, Md5};
 use rusqlite::{params, Connection, Result};
-use serde::Deserialize;
 use pwhash::bcrypt;
-
-#[derive(Clone)]
-struct User {
-    user_id: i32,
-    username: String,
-    email: String
-}
-struct G {
-    db: Connection,
-    user: User,
-}
-#[derive(Debug)]
-struct Messages {
-    text: String,
-    username: String,
-    pub_date: DateTime<Utc>,
-    gravatar_url: String
-}
-
-#[derive(Template)]
-#[template(path = "../templates/timeline.html")]
-struct TimelineTemplate<'a> {
-    messages: Vec<Messages>, 
-    user: Option<User>,
-    request_endpoint: &'a str, 
-    profile_user: Option<User>,
-    followed: Option<bool>, 
-    flashes: Vec<String>,
-    title: String
-}
-
-#[derive(Template)]
-#[template(path = "../templates/login.html")]
-struct LoginTemplate {
-    user: Option<User>,
-    //g: Option<G>,
-    error: String,
-    flashes: Vec<String>,
-    username: String, 
-}
-
-#[derive(Template)]
-#[template(path = "../templates/register.html")]
-struct RegisterTemplate {
-    user: Option<User>,
-    email: String,
-    username: String,
-    password: String,
-    flashes: Vec<String>,
-    error: String,
-}
-
-#[derive(Deserialize)]
-struct MessageInfo {
-    text: String,
-}
-
-#[derive(Deserialize)]
-struct LoginInfo {
-    username: String,
-    password: String,
-}
-
-#[derive(Deserialize)]
-struct RegisterInfo {
-    username: String,
-    email: String,
-    password: String,
-    password2: String,
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {    
@@ -433,11 +361,8 @@ async fn register() -> impl Responder {
     }
 }
 
-fn check_info(info: web::Form<RegisterInfo>, username: String) {
-}
-
 #[post("/register")]
-async fn post_register(info: web::Form<RegisterInfo>, request: HttpRequest ) -> impl Responder {
+async fn post_register(info: web::Form<RegisterInfo> ) -> impl Responder {
 
     if info.username.len() == 0 || info.email.len() == 0 || info.password.len() == 0 {
         FlashMessage::error("Missing username email or password").send();
