@@ -1,6 +1,7 @@
 
 use std::path::Path;
 use actix_files as fs;
+use actix_session::config::BrowserSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::http::{self, header, Method, StatusCode};
 use actix_web::web::{self, method, Redirect};
@@ -104,6 +105,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64])) //Maybe not 64 zeros as key
                     .cookie_secure(false)
+                    .cookie_http_only(true)
+                    .session_lifecycle(BrowserSession::default())
                     .build(),
             )
             .wrap(message_framework.clone())
@@ -119,7 +122,7 @@ async fn main() -> std::io::Result<()> {
             .service(unfollow_user)
             .service(add_message)
     })
-    .bind(("0.0.0.0", 5001))?
+    .bind(("0.0.0.0", 5000))?
     .run()
     .await
 }
@@ -143,7 +146,8 @@ fn init_db() -> rusqlite::Result<()> {
 fn get_user_id(username: &str) -> i32 {
     let conn = connect_db();
     let query_result = conn.query_row("SELECT user_id FROM user WHERE username = ?1", params![username], |row| { Ok(row.get(0))});
-    query_result.unwrap().unwrap()
+    query_result.unwrap_or(Ok(-1)).unwrap_or(-1)
+    
 }
 
 fn get_user(user_option: Option<Identity>) -> Option<User> {
@@ -178,7 +182,6 @@ fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
         .collect()
 }
 
-
 #[get("/")]
 async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
     if let Some(user) = get_user(user) {
@@ -210,7 +213,6 @@ async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>)
         .collect();
         println!("{:?}",messages);
 
-        
         let rendered = TimelineTemplate { 
             messages, 
             request_endpoint: "timeline", 
@@ -311,7 +313,6 @@ async fn user_timeline(path: web::Path<(String,)>, user: Option<Identity>, flash
         .map(|m| { m.unwrap()})
         .collect();
 
-        
         let rendered = TimelineTemplate { 
             messages, 
             request_endpoint: "user_timeline", 
@@ -336,6 +337,9 @@ async fn follow_user(user: Option<Identity>, path: web::Path<String>, _request: 
         let _conn = connect_db();
         let sql = "insert into follower (who_id, whom_id) values (?, ?)";
         let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
+        let mut message = String::from("You are now following ");
+        message.push_str(&_target_username);
+        FlashMessage::info(message).send();
         
     } else {
         return HttpResponse::Found()
@@ -353,7 +357,9 @@ async fn unfollow_user(user: Option<Identity>, path: web::Path<String>, _request
         let _conn = connect_db();
         let sql = "delete from follower where who_id=? and whom_id=?";
         let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
-        
+        let mut message = String::from("You are no longer following ");
+        message.push_str(&_target_username);
+        FlashMessage::info(message).send();
     } else {
         return HttpResponse::Found()
     .append_header((header::LOCATION, "User not found")).finish()
@@ -405,6 +411,10 @@ async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Re
             params![info.username],
             |row| row.get(0)
         );
+    if result.is_err() {
+        FlashMessage::error("Invalid username").send();
+        return Redirect::to("/login").see_other();
+    }
     println!("{:?}", result);
     if let Ok(stored_hash) = result {
         if bcrypt::verify(info.password.clone(), &stored_hash) {
@@ -417,14 +427,14 @@ async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Re
     }
 
     // Password incorrect
-    FlashMessage::error("Invalid username or password").send();
+    FlashMessage::error("Invalid password").send();
     return Redirect::to("/login").see_other();
 }
 
 #[get("/register")]
-async fn register() -> impl Responder {
+async fn register(flash_messages: IncomingFlashMessages) -> impl Responder {
     RegisterTemplate {
-        flashes: vec![],
+        flashes: get_flashes(flash_messages),
         error: String::from(""),
         email: String::from(""),
         username: String::from(""),
@@ -438,20 +448,22 @@ fn check_info(info: web::Form<RegisterInfo>, username: String) {
 
 #[post("/register")]
 async fn post_register(info: web::Form<RegisterInfo>, request: HttpRequest ) -> impl Responder {
-
-    if info.username.len() == 0 || info.email.len() == 0 || info.password.len() == 0 {
-        FlashMessage::error("Missing username email or password").send();
-        return Redirect::to("/register").see_other()
-    }
-
     if info.username.len() == 0 {
         FlashMessage::error("You have to enter a username").send();
-    } else if info.email.len() == 0 {
+        return Redirect::to("/register").see_other()
+
+    } else if info.email.len() == 0 || !info.email.contains("@"){
         FlashMessage::error("You have to enter a valid email address").send();
+        return Redirect::to("/register").see_other()
     } else if info.password.len() == 0 {
         FlashMessage::error("You have to enter a password").send();
+        return Redirect::to("/register").see_other()
     } else if info.password != info.password2 {
         FlashMessage::error("The two passwords do not match").send();
+        return Redirect::to("/register").see_other()
+    } else if get_user_id(&info.username) != -1 {
+        FlashMessage::error("The username is already taken").send();
+        return Redirect::to("/register").see_other()
     }
 
     let hash = bcrypt::hash(info.password.clone()).unwrap();
@@ -466,6 +478,7 @@ async fn post_register(info: web::Form<RegisterInfo>, request: HttpRequest ) -> 
         return Redirect::to("/register").see_other()
     }
     FlashMessage::info("You were successfully registered and can login now").send();
+    println!("REGISTER");
     Redirect::to("/login").see_other()
 }
 #[get("/logout")]

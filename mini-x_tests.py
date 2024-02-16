@@ -11,7 +11,6 @@
 """
 import requests
 
-
 # import schema
 # import data
 # otherwise use the database that you got previously
@@ -23,12 +22,14 @@ def register(username, password, password2=None, email=None):
         password2 = password
     if email is None:
         email = username + '@example.com'
-    return requests.post(f'{BASE_URL}/register', data={
+    r = requests.post(f'{BASE_URL}/register', data={
         'username':     username,
         'password':     password,
         'password2':    password2,
         'email':        email,
-    }, allow_redirects=True)
+    }, allow_redirects = False)
+    r = requests.get(f'{BASE_URL}'+r.headers.get("location"), cookies=r.cookies.get_dict())
+    return r
 
 def login(username, password):
     """Helper function to login"""
@@ -36,7 +37,8 @@ def login(username, password):
     r = http_session.post(f'{BASE_URL}/login', data={
         'username': username,
         'password': password
-    }, allow_redirects=True)
+    }, allow_redirects=False)
+    r = requests.get(f'{BASE_URL}'+r.headers.get("location"), cookies=r.cookies.get_dict())
     return r, http_session
 
 def register_and_login(username, password):
@@ -46,12 +48,15 @@ def register_and_login(username, password):
 
 def logout(http_session):
     """Helper function to logout"""
-    return http_session.get(f'{BASE_URL}/logout', allow_redirects=True)
+    r = http_session.get(f'{BASE_URL}/logout', allow_redirects=False)
+    return requests.get(f'{BASE_URL}'+r.headers.get("location"), cookies=r.cookies.get_dict())
 
 def add_message(http_session, text):
     """Records a message"""
     r = http_session.post(f'{BASE_URL}/add_message', data={'text': text},
-                                allow_redirects=True)
+                                allow_redirects=False)
+    r = requests.get(f'{BASE_URL}'+r.headers.get("location"), cookies=r.cookies.get_dict())
+    
     if text:
         assert 'Your message was recorded' in r.text
     return r
@@ -61,8 +66,7 @@ def add_message(http_session, text):
 def test_register():
     """Make sure registering works"""
     r = register('user1', 'default')
-    assert 'You were successfully registered ' \
-           'and can login now' in r.text
+    assert 'You were successfully registered and can login now' in r.text
     r = register('user1', 'default')
     assert 'The username is already taken' in r.text
     r = register('', 'default')
@@ -111,8 +115,9 @@ def test_timelines():
     assert 'the message by bar' in r.text
 
     # now let's follow foo
-    r = http_session.get(f'{BASE_URL}/foo/follow', allow_redirects=True)
-    assert 'You are now following &#34;foo&#34;' in r.text
+    r = http_session.get(f'{BASE_URL}/foo/follow', allow_redirects=False)
+    r = requests.get(f'{BASE_URL}'+r.headers.get("location"), cookies=r.cookies.get_dict())
+    assert 'You are now following foo' in r.text
 
     # we should now see foo's message
     r = http_session.get(f'{BASE_URL}/')
@@ -128,8 +133,10 @@ def test_timelines():
     assert 'the message by bar' not in r.text
 
     # now unfollow and check if that worked
-    r = http_session.get(f'{BASE_URL}/foo/unfollow', allow_redirects=True)
-    assert 'You are no longer following &#34;foo&#34;' in r.text
+    r = http_session.get(f'{BASE_URL}/foo/unfollow', allow_redirects=False)
+    r = requests.get(f'{BASE_URL}'+r.headers.get("location"), cookies=r.cookies.get_dict())
+
+    assert 'You are no longer following foo' in r.text
     r = http_session.get(f'{BASE_URL}/')
     assert 'the message by foo' not in r.text
     assert 'the message by bar' in r.text
