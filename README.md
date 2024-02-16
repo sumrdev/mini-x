@@ -40,3 +40,11 @@ Then  in your bowser of choice connect to [localhost:5000](http://localhost:5000
 - md-5 - version "0.10.6"
 - uuid - version "1.7.0"
 
+# Resources 
+## Frameworks 
+- Actix web framework 
+
+## Important libraries 
+- Askama for rendering templates
+- rusqlite for database handling
+- pwhash to verify and create user secrets 
