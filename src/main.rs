@@ -127,7 +127,7 @@ async fn main() -> std::io::Result<()> {
             .service(unfollow_user)
             .service(add_message)
     })
-    .bind(("0.0.0.0", 5000))?
+    .bind(("0.0.0.0", 5001))?
     .run()
     .await
 }
@@ -476,7 +476,6 @@ async fn post_register(info: web::Form<RegisterInfo>, request: HttpRequest ) -> 
     FlashMessage::info("You were successfully registered and can login now").send();
     Redirect::to("/login").see_other()
 }
-
 #[get("/logout")]
 async fn logout(user: Identity) -> impl Responder {
     FlashMessage::info("You were logged out").send();
