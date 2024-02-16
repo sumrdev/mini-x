@@ -11,7 +11,17 @@ https://github.com/sumrdev/mini-x.git
  Follow the guide to installing the rust language 
 
 
-[Rust instalation guide](https://www.rust-lang.org/learn/get-started)
+[Rust installation guide](https://www.rust-lang.org/learn/get-started)
+
+## Installing sqlite3
+Follow the guide to installing sqlite3
+
+[sqlite3 installation guide](https://www.sqlitetutorial.net/download-install-sqlite/)
+
+## (Optional) Installing libsqlite3-dev
+Follow the guide to installing libsqlite3-dev in case of build errors with cargo run
+
+[libsqlite3 installation guide](https://ubuntu.pkgs.org/20.04/ubuntu-main-amd64/libsqlite3-dev_3.31.1-4_amd64.deb.html)
 
 ## Running the program 
 First you need to build the project. This is done from the root foulder in the project running the build command.
