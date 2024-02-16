@@ -34,6 +34,11 @@ cargo run
 ```
 Then  in your bowser of choice connect to [localhost:5000](http://localhost:5000)
 
+## Running the api
+```
+cargo run --bin api
+```
+
 # Dependencies
 - actix-files - version "0.6.5"
 - actix-web - version "4"
