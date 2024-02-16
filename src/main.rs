@@ -298,7 +298,6 @@ async fn unfollow_user(user: Option<Identity>, path: web::Path<String>, _request
 
 #[post("/add_message")]
 async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>) -> impl Responder {
-    println!("{}", "a");
     if let Some(user) = user {
         let _ = connect_db().execute("insert into message (author_id, text, pub_date, flagged)
         values (?, ?, ?, 0)", params![user.id().unwrap(),msg.text, Utc::now().to_rfc3339()]);
@@ -403,7 +402,6 @@ async fn post_register(info: web::Form<RegisterInfo>) -> impl Responder {
         return Redirect::to("/register").see_other()
     }
     FlashMessage::info("You were successfully registered and can login now").send();
-    println!("REGISTER");
     Redirect::to("/login").see_other()
 }
 #[get("/logout")]
