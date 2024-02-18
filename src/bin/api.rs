@@ -103,7 +103,7 @@ async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>,
 }
 
 #[get("/msgs")]
-async fn messages_api(msgs: web::Query<MessagesQuery>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder{
+async fn messages_api(amount: web::Query<MessageAmount>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder{
     update_latest(query, latest_action);
 
     let conn = connect_db();
@@ -111,7 +111,7 @@ async fn messages_api(msgs: web::Query<MessagesQuery>, query: web::Query<Latest>
         SELECT message.*, user.* FROM message, user
         WHERE message.flagged = 0 AND message.author_id = user.user_id
         ORDER BY message.pub_date DESC LIMIT ?").unwrap();
-    let result = stmt.query_map([msgs.no], |row| { 
+    let result = stmt.query_map([amount.no], |row| { 
         Ok(Message {
             content: row.get(2)?,
             user: row.get(6)?,
@@ -128,7 +128,7 @@ async fn messages_api(msgs: web::Query<MessagesQuery>, query: web::Query<Latest>
 }
 
 #[get("msgs/{username}")]
-async fn messages_per_user_get(path: web::Path<(String,)>, msgs: web::Query<MessagesQuery>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
+async fn messages_per_user_get(path: web::Path<(String,)>, amount: web::Query<MessageAmount>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
     update_latest(query, latest_action);
     let username = &path.0;
     if let Some(user_id) = get_user_id(username) {
@@ -138,7 +138,7 @@ async fn messages_per_user_get(path: web::Path<(String,)>, msgs: web::Query<Mess
             WHERE message.flagged = 0 AND
             user.user_id = message.author_id AND user.user_id = ?
             ORDER BY message.pub_date DESC LIMIT ?").unwrap();
-        let result = stmt.query_map([user_id, msgs.no], |row| { 
+        let result = stmt.query_map([user_id, amount.no], |row| { 
             Ok(Message {
                 content: row.get(2)?,
                 user: row.get(6)?,

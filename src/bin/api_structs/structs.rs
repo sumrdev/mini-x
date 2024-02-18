@@ -4,18 +4,32 @@ use chrono::{DateTime, Utc};
 use chrono::serde::ts_seconds;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
-pub struct Latest{
-    pub latest: i32
-}
-
 pub struct LatestAction{
     pub latest: Mutex<i32>
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Latest{
+    pub latest: i32
+}
+impl Default for Latest {
+    fn default() -> Self {
+        Latest {
+            latest: -1
+        }
+    }
+}
+
 #[derive(Deserialize)]
-pub struct MessagesQuery{
+pub struct MessageAmount{
     pub no: i32
+}
+impl Default for MessageAmount {
+    fn default() -> Self {
+        MessageAmount {
+            no: 100
+        }
+    }
 }
 
 #[derive(Deserialize)]
