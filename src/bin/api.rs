@@ -1,4 +1,6 @@
 
+mod api_structs;
+use api_structs::structs::*;
 use std::path::Path;
 use std::sync::Mutex;
 use actix_files as fs;
@@ -80,13 +82,6 @@ struct MessageInfo {
 struct LoginInfo {
     username: String,
     password: String,
-}
-
-#[derive(Deserialize)]
-struct RegisterInfo {
-    username: String,
-    email: String,
-    pwd: String,
 }
 
 #[actix_web::main]
@@ -436,16 +431,6 @@ async fn register() -> impl Responder {
     }
 }
 
-fn check_info(info: web::Form<RegisterInfo>, username: String) {
-}
-
-
-#[derive(Serialize)]
-struct RegisterError {
-    status: i32,
-    error_msg: String
-}
-
 #[post("/register")]
 async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>, latest: web::Data<LatestAction>) -> impl Responder {
 
@@ -492,16 +477,6 @@ async fn logout(user: Identity) -> impl Responder {
     user.logout();
     Redirect::to("/public").see_other()
 }
-
-#[derive(Serialize, Deserialize)]
-struct Latest{
-    latest: i32
-}
-
-struct LatestAction{
-    latest: Mutex<i32>
-}
-
 
 fn update_latest(query: web::Query<Latest>, latest_processed: web::Data<LatestAction>){
     let mut latest = latest_processed.latest.lock().unwrap();
