@@ -106,6 +106,9 @@ async fn main() -> std::io::Result<()> {
             .wrap(message_framework.clone())
             .service(get_latest)
             .service(register)
+            .service(messages_per_user_get)
+            .service(messages_per_user_post)
+            .service(messages_api)
             .service(post_register)
             .service(timeline)
             .service(public_timeline)
@@ -471,6 +474,72 @@ async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>,
     }
     
 }
+
+#[get("/msgs")]
+async fn messages_api(msgs: web::Query<MessagesQuery>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder{
+    println!("{} - {}", msgs.no, query.latest);
+    update_latest(query, latest_action);
+
+    let conn = connect_db();
+    let mut stmt = conn.prepare("
+        SELECT message.*, user.* FROM message, user
+        WHERE message.flagged = 0 AND message.author_id = user.user_id
+        ORDER BY message.pub_date DESC LIMIT ?").unwrap();
+    let result = stmt.query_map([msgs.no], |row| { 
+        Ok(Message {
+            content: row.get(2)?,
+            user: row.get(6)?,
+            pub_date: {
+                let date_str: String = row.get(3)?;
+                chrono::DateTime::parse_from_rfc3339(&date_str).unwrap().to_utc()
+            }
+        }) 
+    });
+    
+    let messages: Vec<Message> = result.unwrap().skip_while(|m| m.is_err()).map(|m| m.unwrap()).collect();
+    
+    HttpResponse::Ok().json(messages)
+}
+
+#[get("msgs/{username}")]
+async fn messages_per_user_get(path: web::Path<(String,)>, msgs: web::Query<MessagesQuery>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
+    update_latest(query, latest_action);
+    let username = &path.0;
+    let user_id = get_user_id(username);
+
+    let conn = connect_db();
+    let mut stmt = conn.prepare("
+        SELECT message.*, user.* FROM message, user
+        WHERE message.flagged = 0 AND
+        user.user_id = message.author_id AND user.user_id = ?
+        ORDER BY message.pub_date DESC LIMIT ?").unwrap();
+    let result = stmt.query_map([user_id, msgs.no], |row| { 
+        Ok(Message {
+            content: row.get(2)?,
+            user: row.get(6)?,
+            pub_date: {
+                let date_str: String = row.get(3)?;
+                chrono::DateTime::parse_from_rfc3339(&date_str).unwrap().to_utc()
+            }
+        }) 
+    });
+    
+    let messages: Vec<Message> = result.unwrap().skip_while(|m| m.is_err()).map(|m| m.unwrap()).collect();
+
+    HttpResponse::Ok().json(messages)
+}
+
+#[post("msgs/{username}")]
+async fn messages_per_user_post(path: web::Path<(String,)>, msg: web::Json<MessageContent>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
+    update_latest(query, latest_action);
+    let username = &path.0;
+    let user_id = get_user_id(username);
+    let stmt = "insert into message (author_id, text, pub_date, flagged) values (?, ?, ?, 0)";
+    let _ = connect_db().execute(stmt, params![user_id, msg.content, Utc::now().to_rfc3339()]);
+    HttpResponse::NoContent().json(String::from(""))
+}
+
+
 #[get("/logout")]
 async fn logout(user: Identity) -> impl Responder {
     FlashMessage::info("You were logged out").send();
@@ -478,8 +547,8 @@ async fn logout(user: Identity) -> impl Responder {
     Redirect::to("/public").see_other()
 }
 
-fn update_latest(query: web::Query<Latest>, latest_processed: web::Data<LatestAction>){
-    let mut latest = latest_processed.latest.lock().unwrap();
+fn update_latest(query: web::Query<Latest>, latest_action: web::Data<LatestAction>){
+    let mut latest = latest_action.latest.lock().unwrap();
     *latest = query.latest;
 }
 

@@ -11,7 +11,7 @@ actix-web = "4"
 actix-session = { version = "0.9.0", features = ["cookie-session"] }
 askama = "0.12.1"
 askama_actix = "0.14.0"
-chrono = "0.4.34"
+chrono = {version ="0.4.34", features = ["serde"]}
 filters = "0.4.0"
 rusqlite = "0.30.0"
 actix-web-flash-messages = { version = "0.4", features = ["cookies"] }
