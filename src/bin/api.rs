@@ -24,6 +24,8 @@ async fn main() -> std::io::Result<()> {
             .service(messages_per_user_get)
             .service(messages_per_user_post)
             .service(messages_api)
+            .service(follows_get)
+            .service(follows_post)
     })
     .bind(("0.0.0.0", 5001))?
     .run()
@@ -169,5 +171,56 @@ async fn messages_per_user_post(path: web::Path<(String,)>, msg: web::Json<Messa
     }
     else {
         HttpResponse::NotFound().json("")
+    }
+}
+
+
+#[get("fllws/{username}")]
+async fn follows_get(path: web::Path<(String,)>, amount: web::Query<MessageAmount>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
+    update_latest(query, latest_action);
+    let username = &path.0;
+    if let Some(user_id) = get_user_id(username) {
+        let conn = connect_db();
+        let mut stmt = conn.prepare("
+            SELECT user.username FROM user
+            INNER JOIN follower ON follower.whom_id=user.user_id
+            WHERE follower.who_id=?
+            LIMIT ?").unwrap();
+        let mut rows = stmt.query([user_id, amount.no]).unwrap();
+
+        let mut followers: Vec<String> = Vec::new();
+        while let Some(row) = rows.next().unwrap() {
+            followers.push(row.get(0).unwrap());
+        }
+
+        HttpResponse::Ok().json(Follows{follows: followers})
+    }
+    else {
+        HttpResponse::NotFound().json("")
+    }
+}
+
+#[post("fllws/{username}")]
+async fn follows_post(path: web::Path<(String,)>, follow_param: web::Json<FollowParam>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
+    update_latest(query, latest_action);
+    let username = &path.0;
+    if let Some(user_id) = get_user_id(username) {
+        let follow_param = follow_param.into_inner();
+        if let Some(follow_username) = follow_param.follow {
+            if let Some(follow_user_id) = get_user_id(&follow_username) {
+                let _ = connect_db().execute("INSERT INTO follower (who_id, whom_id) VALUES (?, ?)", [user_id, follow_user_id]).unwrap();
+                return HttpResponse::NoContent()
+            }
+        } else if let Some(unfollow_username) = follow_param.unfollow {
+            if let Some(unfollow_user_id) = get_user_id(&unfollow_username) {
+                let _ = connect_db().execute("DELETE FROM follower WHERE who_id=? and WHOM_ID=?", [user_id, unfollow_user_id]).unwrap();
+                return HttpResponse::NoContent()
+            }
+        }
+
+        HttpResponse::BadRequest()
+    }
+    else {
+        HttpResponse::NotFound()
     }
 }

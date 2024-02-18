@@ -57,3 +57,14 @@ pub struct Message {
 pub struct MessageContent {
     pub content: String
 }
+
+#[derive(Serialize)]
+pub struct Follows {
+    pub follows: Vec<String>
+}
+
+#[derive(Deserialize)]
+pub struct FollowParam {
+    pub follow: Option<String>,
+    pub unfollow: Option<String>
+}
