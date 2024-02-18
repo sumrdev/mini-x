@@ -46,10 +46,10 @@ fn init_db() -> rusqlite::Result<()> {
     Ok(())
 }
 
-fn get_user_id(username: &str) -> i32 {
+fn get_user_id(username: &str) -> Option<i32> {
     let conn = connect_db();
-    let query_result = conn.query_row("SELECT user_id FROM user WHERE username = ?1", params![username], |row| { Ok(row.get(0))});
-    query_result.unwrap().unwrap()
+    let res = conn.query_row("SELECT user_id FROM user WHERE username = ?1", params![username], |row| { row.get(0)}).optional().unwrap();
+    res
 }
 
 fn update_latest(query: web::Query<Latest>, latest_action: web::Data<LatestAction>){
@@ -68,9 +68,7 @@ async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>,
 
     update_latest(query, latest);
 
-    let conn = connect_db();
-
-    let user_exists: Option<i32> = conn.query_row("SELECT user_id FROM user WHERE username = ?1", params![info.username], |row| { row.get(0)}).optional().unwrap();
+    let user_exists = get_user_id(&info.username);
     
     let error = 
     if info.username.len() == 0 {
@@ -87,7 +85,7 @@ async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>,
 
     let hash = bcrypt::hash(info.pwd.clone()).unwrap();
 
-    let _ = conn.execute(
+    let _ = connect_db().execute(
         "insert into user (
             username, email, pw_hash) values (?, ?, ?)",
         params![info.username, info.email, hash ],
@@ -133,36 +131,43 @@ async fn messages_api(msgs: web::Query<MessagesQuery>, query: web::Query<Latest>
 async fn messages_per_user_get(path: web::Path<(String,)>, msgs: web::Query<MessagesQuery>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
     update_latest(query, latest_action);
     let username = &path.0;
-    let user_id = get_user_id(username);
-
-    let conn = connect_db();
-    let mut stmt = conn.prepare("
-        SELECT message.*, user.* FROM message, user
-        WHERE message.flagged = 0 AND
-        user.user_id = message.author_id AND user.user_id = ?
-        ORDER BY message.pub_date DESC LIMIT ?").unwrap();
-    let result = stmt.query_map([user_id, msgs.no], |row| { 
-        Ok(Message {
-            content: row.get(2)?,
-            user: row.get(6)?,
-            pub_date: {
-                let date_str: String = row.get(3)?;
-                chrono::DateTime::parse_from_rfc3339(&date_str).unwrap().to_utc()
-            }
-        }) 
-    });
+    if let Some(user_id) = get_user_id(username) {
+        let conn = connect_db();
+        let mut stmt = conn.prepare("
+            SELECT message.*, user.* FROM message, user
+            WHERE message.flagged = 0 AND
+            user.user_id = message.author_id AND user.user_id = ?
+            ORDER BY message.pub_date DESC LIMIT ?").unwrap();
+        let result = stmt.query_map([user_id, msgs.no], |row| { 
+            Ok(Message {
+                content: row.get(2)?,
+                user: row.get(6)?,
+                pub_date: {
+                    let date_str: String = row.get(3)?;
+                    chrono::DateTime::parse_from_rfc3339(&date_str).unwrap().to_utc()
+                }
+            }) 
+        });
+        
+        let messages: Vec<Message> = result.unwrap().skip_while(|m| m.is_err()).map(|m| m.unwrap()).collect();
     
-    let messages: Vec<Message> = result.unwrap().skip_while(|m| m.is_err()).map(|m| m.unwrap()).collect();
-
-    HttpResponse::Ok().json(messages)
+        HttpResponse::Ok().json(messages)
+    }
+    else {
+        HttpResponse::NotFound().json("")
+    }
 }
 
 #[post("msgs/{username}")]
 async fn messages_per_user_post(path: web::Path<(String,)>, msg: web::Json<MessageContent>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
     update_latest(query, latest_action);
     let username = &path.0;
-    let user_id = get_user_id(username);
-    let stmt = "insert into message (author_id, text, pub_date, flagged) values (?, ?, ?, 0)";
-    let _ = connect_db().execute(stmt, params![user_id, msg.content, Utc::now().to_rfc3339()]);
-    HttpResponse::NoContent().json(String::from(""))
+    if let Some(user_id) = get_user_id(username) {
+        let stmt = "insert into message (author_id, text, pub_date, flagged) values (?, ?, ?, 0)";
+        let _ = connect_db().execute(stmt, params![user_id, msg.content, Utc::now().to_rfc3339()]);
+        HttpResponse::NoContent().json("")
+    }
+    else {
+        HttpResponse::NotFound().json("")
+    }
 }
