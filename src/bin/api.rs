@@ -1,5 +1,6 @@
 
 use std::path::Path;
+use std::sync::Mutex;
 use actix_files as fs;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::error::ErrorBadRequest;
@@ -85,11 +86,12 @@ struct LoginInfo {
 struct RegisterInfo {
     username: String,
     email: String,
-    password: String,
+    pwd: String,
 }
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {    
+async fn main() -> std::io::Result<()> {
+    let latest = web::Data::new(LatestAction {latest: Mutex::new(-1)});
     if !std::fs::metadata(get_database_string()).is_ok() {
         let _ = init_db();
     }
@@ -98,6 +100,7 @@ async fn main() -> std::io::Result<()> {
     let message_framework = FlashMessagesFramework::builder(message_store).build();
     HttpServer::new(move || {
         App::new()
+            .app_data(latest.clone())
             .wrap(IdentityMiddleware::default())
             .service(fs::Files::new("/static", "./static/").index_file("index.html"))
             .wrap(
@@ -106,6 +109,7 @@ async fn main() -> std::io::Result<()> {
                     .build(),
             )
             .wrap(message_framework.clone())
+            .service(get_latest)
             .service(register)
             .service(post_register)
             .service(timeline)
@@ -118,13 +122,13 @@ async fn main() -> std::io::Result<()> {
             .service(unfollow_user)
             .service(add_message)
     })
-    .bind(("0.0.0.0", 5002))?
+    .bind(("0.0.0.0", 5001))?
     .run()
     .await
 }
 
 fn get_database_string() -> String {
-    String::from("/tmp/mini-x.db")
+    String::from("/tmp/mini-x_api.db")
 }
 
 fn connect_db() -> Connection {
@@ -443,7 +447,9 @@ struct RegisterError {
 }
 
 #[post("/register")]
-async fn post_register(info: web::Json<RegisterInfo>) -> impl Responder {
+async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>, latest: web::Data<LatestAction>) -> impl Responder {
+
+    update_latest(query, latest);
 
     let conn = connect_db();
 
@@ -454,7 +460,7 @@ async fn post_register(info: web::Json<RegisterInfo>) -> impl Responder {
         Some(String::from("You have to enter a username"))
     } else if info.email.len() == 0 {
         Some(String::from("You have to enter a valid email address"))
-    } else if info.password.len() == 0 {
+    } else if info.pwd.len() == 0 {
         Some(String::from("You have to enter a password"))
     } else if let Some(_) = user_exists {
         Some(String::from("The username is already taken"))
@@ -462,7 +468,7 @@ async fn post_register(info: web::Json<RegisterInfo>) -> impl Responder {
         None
     };
 
-    let hash = bcrypt::hash(info.password.clone()).unwrap();
+    let hash = bcrypt::hash(info.pwd.clone()).unwrap();
 
     let _ = conn.execute(
         "insert into user (
@@ -485,4 +491,25 @@ async fn logout(user: Identity) -> impl Responder {
     FlashMessage::info("You were logged out").send();
     user.logout();
     Redirect::to("/public").see_other()
+}
+
+#[derive(Serialize, Deserialize)]
+struct Latest{
+    latest: i32
+}
+
+struct LatestAction{
+    latest: Mutex<i32>
+}
+
+
+fn update_latest(query: web::Query<Latest>, latest_processed: web::Data<LatestAction>){
+    let mut latest = latest_processed.latest.lock().unwrap();
+    *latest = query.latest;
+}
+
+#[get("/latest")]
+async fn get_latest(latest_action: web::Data<LatestAction>) -> impl Responder {
+    let latest = latest_action.latest.lock().unwrap();
+    HttpResponse::Ok().json(Latest{latest: *latest})
 }
