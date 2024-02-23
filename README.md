@@ -33,7 +33,7 @@ After it has successfully build and no errors occoured run the project.
 ```
 cargo run --bin mini-x
 ```
-In the case of of dependencies not being installed run 
+In the case of of dependencies not being installed run - do not run unless errors are encountered
 ```
 cargo install --path ./
 ```
