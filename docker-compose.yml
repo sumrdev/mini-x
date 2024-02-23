@@ -1,0 +1,15 @@
+version: '3.3'
+
+services:
+  app:
+    build: .
+    container_name: mini-x
+    ports:
+      - "5000:5000"
+
+  api:
+    build: .
+    container_name: mini-x-api
+    ports:
+      - "5001:5001"
+    command: ./api
