@@ -83,20 +83,23 @@ fn get_user(user_option: Option<Identity>) -> Option<User> {
         let conn = connect_db();
         let user_id = user.id().unwrap();
 
-        let user = conn
-            .query_row(
-                "select * from user where user_id = ?",
-                params![user_id],
-                |row| {
-                    Ok(Some(User {
-                        user_id: row.get(0)?,
-                        username: row.get(1)?,
-                        email: row.get(2)?,
-                    }))
-                },
-            )
-            .unwrap();
-        return user;
+        match conn.query_row(
+            "select * from user where user_id = ?",
+            params![user_id],
+            |row| {
+                Ok(Some(User {
+                    user_id: row.get(0)?,
+                    username: row.get(1)?,
+                    email: row.get(2)?,
+                }))
+            },
+        ) {
+            Ok(user) => return user,
+            Err(_) => {
+                user.logout(); // Call logout if no user is found
+                return None;
+            }
+        }
     }
     None
 }
