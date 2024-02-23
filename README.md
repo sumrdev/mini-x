@@ -28,13 +28,18 @@ First you need to build the project. This is done from the root foulder in the p
 ```
 cargo build
 ```
+
 After it has successfully build and no errors occoured run the project.
 ```
-cargo run 
+cargo run --bin mini-x
+```
+In the case of of dependencies not being installed run 
+```
+cargo install --path ./
 ```
 Then  in your bowser of choice connect to [localhost:5000](http://localhost:5000)
 
-## Running the api
+## Running the apicargo run --bin mini-x
 ```
 cargo run --bin api
 ```
