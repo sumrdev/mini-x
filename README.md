@@ -4,7 +4,7 @@ Having git on the machine is neccesary
 
 Navigate a terminal to the desired directory. Then use the following command 
 ```
-https://github.com/sumrdev/mini-x.git
+git clone https://github.com/sumrdev/mini-x.git
 ```
 
 ## Installing rust 
@@ -39,7 +39,7 @@ cargo install --path ./
 ```
 Then  in your bowser of choice connect to [localhost:5000](http://localhost:5000)
 
-## Running the apicargo run --bin mini-x
+## Running the api
 ```
 cargo run --bin api
 ```
