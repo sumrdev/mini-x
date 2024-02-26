@@ -223,11 +223,11 @@ async fn public_timeline(
 
 #[get("/{username}")]
 async fn user_timeline(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     user: Option<Identity>,
     flash_messages: IncomingFlashMessages,
 ) -> impl Responder {
-    let username = &path.0;
+    let username = path.into_inner();
     let conn = connect_db();
     let profile_user = conn.query_row(
         "select * from user where username = ?",
