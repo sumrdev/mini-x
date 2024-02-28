@@ -5,6 +5,12 @@ COPY . .
 
 EXPOSE 5000
 
-RUN cargo install --path .
+RUN cargo build -r
 
-CMD ["mini-x"]
+RUN mv templates/ target/release/
+RUN mv static/ target/release/
+RUN mv schema.sql target/release/
+
+WORKDIR /usr/src/mini-x/target/release
+
+CMD ["./mini-x"]
