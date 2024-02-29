@@ -1,43 +1,68 @@
 mod template_structs;
+
 use actix_files as fs;
-use actix_session::config::BrowserSession;
-use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::http::{ header, StatusCode};
-use actix_web::web::{self, Redirect};
-use actix_identity::IdentityMiddleware;
 use actix_identity::Identity;
+use actix_identity::IdentityMiddleware;
+use actix_session::Session;
+use actix_session::SessionExt;
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
+use actix_web::dev;
+use actix_web::error::ErrorBadRequest;
+use actix_web::http::{header, StatusCode};
+use actix_web::web::{self, Redirect};
+use actix_web::Error;
+use actix_web::FromRequest;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
-use actix_web_flash_messages::{storage::CookieMessageStore, FlashMessagesFramework};
-use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
+use serde::Deserialize;
 use template_structs::structs::*;
+use futures::future::{ok, err, Ready};
+#[derive(Debug, Deserialize, Default)]
+pub struct FlashMessages {
+    messages: Vec<String>,
+}
+
+impl FromRequest for FlashMessages {
+    type Error = Error;
+    type Future = Ready<Result<Self, Self::Error>>;
+
+    fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
+        let s = req.get_session();
+        if let Ok(item) = s.get::<String>("_flash") {
+            if let Some(message) = item {
+                s.clear();
+                ok(FlashMessages { messages:  message.split(",").map(|s| s.to_string()).collect()  })
+            } else {
+                err(ErrorBadRequest("no flash message"))
+            }
+        } else {
+            err(ErrorBadRequest("no flash message"))
+        }
+
+    }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     if !std::fs::metadata(get_database_string()).is_ok() {
         let _ = init_db();
     }
-    let signing_key = Key::generate(); // This will usually come from configuration!
-    let message_store = CookieMessageStore::builder(signing_key).build();
-    let message_framework = FlashMessagesFramework::builder(message_store).build();
     HttpServer::new(move || {
         App::new()
             .wrap(IdentityMiddleware::default())
             .service(fs::Files::new("/static", "./static/").index_file("index.html"))
             .wrap(
-                SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64])) //Maybe not 64 zeros as key
-                    .cookie_secure(false)
+                SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
+                    .cookie_secure(true)
                     .cookie_http_only(true)
-                    .session_lifecycle(BrowserSession::default())
                     .build(),
             )
-            .wrap(message_framework.clone())
             .service(register)
             .service(post_register)
             .service(timeline)
@@ -73,9 +98,12 @@ fn init_db() -> rusqlite::Result<()> {
 
 fn get_user_id(username: &str) -> i32 {
     let conn = connect_db();
-    let query_result = conn.query_row("SELECT user_id FROM user WHERE username = ?1", params![username], |row| { Ok(row.get(0))});
+    let query_result = conn.query_row(
+        "SELECT user_id FROM user WHERE username = ?1",
+        params![username],
+        |row| Ok(row.get(0)),
+    );
     query_result.unwrap_or(Ok(-1)).unwrap_or(-1)
-    
 }
 
 fn get_user(user_option: Option<Identity>) -> Option<User> {
@@ -115,15 +143,8 @@ fn gravatar_url(email: &str) -> String {
     )
 }
 
-fn get_flashes(messages: IncomingFlashMessages) -> Vec<String> {
-    messages
-        .iter()
-        .map(|m: &FlashMessage| -> String { m.content().to_string() })
-        .collect()
-}
-
 #[get("/")]
-async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
+async fn timeline(flash: Option<FlashMessages>, user: Option<Identity>) -> impl Responder {
     if let Some(user) = get_user(user) {
         //let mut messages = get_messages();
         // you need to login on /register to see any page for now
@@ -155,13 +176,13 @@ async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>)
         let messages: Vec<Messages> = query_result.unwrap().map(|m| m.unwrap()).collect();
         println!("{:?}", messages);
 
-        let rendered = TimelineTemplate { 
-            messages, 
-            request_endpoint: "timeline", 
-            profile_user: None, 
+        let rendered = TimelineTemplate {
+            messages,
+            request_endpoint: "timeline",
+            profile_user: None,
             user: Some(user),
             followed: Some(false),
-            flashes: get_flashes(flash_messages),
+            flashes: flash.unwrap_or_default().messages,
             title: String::from("Timeline"),
         }
         .render()
@@ -176,7 +197,7 @@ async fn timeline(flash_messages: IncomingFlashMessages, user: Option<Identity>)
 
 #[get("/public")]
 async fn public_timeline(
-    flash_messages: IncomingFlashMessages,
+    flash_messages: Option<FlashMessages>,
     user: Option<Identity>,
 ) -> impl Responder {
     let user = get_user(user);
@@ -216,7 +237,7 @@ async fn public_timeline(
         profile_user: None,
         user,
         followed: Some(false),
-        flashes: get_flashes(flash_messages),
+        flashes: flash_messages.unwrap_or_default().messages,
         title: String::from(""),
     }
 }
@@ -225,7 +246,7 @@ async fn public_timeline(
 async fn user_timeline(
     path: web::Path<String>,
     user: Option<Identity>,
-    flash_messages: IncomingFlashMessages,
+    flash_messages: Option<FlashMessages>,
 ) -> impl Responder {
     let username = path.into_inner();
     let conn = connect_db();
@@ -277,13 +298,13 @@ async fn user_timeline(
 
         let messages: Vec<Messages> = query_result.unwrap().map(|m| m.unwrap()).collect();
 
-        let rendered = TimelineTemplate { 
-            messages, 
-            request_endpoint: "user_timeline", 
+        let rendered = TimelineTemplate {
+            messages,
+            request_endpoint: "user_timeline",
             profile_user: Some(profile_user),
             user,
             followed: Some(followed),
-            flashes: get_flashes(flash_messages),
+            flashes: flash_messages.unwrap_or_default().messages,
             title: String::from("Timeline"),
         }
         .render()
@@ -299,6 +320,7 @@ async fn follow_user(
     user: Option<Identity>,
     path: web::Path<String>,
     _request: HttpRequest,
+    session: Session,
 ) -> impl Responder {
     if let Some(_current_user) = user {
         let _target_username = path.clone();
@@ -308,8 +330,7 @@ async fn follow_user(
         let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
         let mut message = String::from("You are now following ");
         message.push_str(&_target_username);
-        FlashMessage::info(message).send();
-        
+        let _ = session.insert("_flash", message);
     } else {
         return HttpResponse::Found()
             .append_header((header::LOCATION, "User not found"))
@@ -325,6 +346,7 @@ async fn unfollow_user(
     user: Option<Identity>,
     path: web::Path<String>,
     _request: HttpRequest,
+    session: Session,
 ) -> impl Responder {
     if let Some(_current_user) = user {
         let _target_username = path.clone();
@@ -334,7 +356,8 @@ async fn unfollow_user(
         let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
         let mut message = String::from("You are no longer following ");
         message.push_str(&_target_username);
-        FlashMessage::info(message).send();
+        let _ = session.insert("_flash", message);
+
     } else {
         return HttpResponse::Found()
             .append_header((header::LOCATION, "User not found"))
@@ -346,14 +369,14 @@ async fn unfollow_user(
 }
 
 #[post("/add_message")]
-async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>) -> impl Responder {
+async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>, session: Session) -> impl Responder {
     if let Some(user) = user {
         let _ = connect_db().execute(
             "insert into message (author_id, text, pub_date, flagged)
         values (?, ?, ?, 0)",
             params![user.id().unwrap(), msg.text, Utc::now().to_rfc3339()],
         );
-        FlashMessage::info("Your message was recorded").send();
+        let _ = session.insert("_flash", "Your message was recorded");
         return HttpResponse::Found()
             .append_header((header::LOCATION, "/"))
             .finish();
@@ -364,16 +387,16 @@ async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>) -> imp
 }
 
 #[get("/login")]
-async fn login(flash_messages: IncomingFlashMessages, user: Option<Identity>) -> impl Responder {
+async fn login(flash_messages: Option<FlashMessages>, user: Option<Identity>, session: Session) -> impl Responder {
     if let Some(_) = user {
-        FlashMessage::info("You are already logged in").send();
+        let _ = session.insert("_flash", "You are already logged in");
         HttpResponse::TemporaryRedirect()
             .append_header((header::LOCATION, "/"))
             .finish()
     } else {
         let rendered = LoginTemplate {
             user: None,
-            flashes: get_flashes(flash_messages),
+            flashes: flash_messages.unwrap_or_default().messages,
             error: String::from(""),
             username: String::from(""),
         }
@@ -384,16 +407,17 @@ async fn login(flash_messages: IncomingFlashMessages, user: Option<Identity>) ->
 }
 
 #[post("/login")]
-async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Responder {
-    let result : Result<String> = connect_db()
-        .query_row(
-            "select pw_hash from user where username = ?",
-            params![info.username],
-            |row| row.get(0)
-        );
+async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest, session: Session) -> impl Responder {
+    let result: Result<String> = connect_db().query_row(
+        "select pw_hash from user where username = ?",
+        params![info.username],
+        |row| row.get(0),
+    );
     if result.is_err() {
-        FlashMessage::error("Invalid username").send();
-        return Redirect::to("/login").see_other();
+        let _ = session.insert("_flash", "Invalid username");
+        return HttpResponse::Found()
+            .append_header((header::LOCATION, "/login"))
+            .finish();
     }
     println!("{:?}", result);
     if let Ok(stored_hash) = result {
@@ -401,20 +425,24 @@ async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest) -> impl Re
             // Successful login
             let user_id = get_user_id(&info.username);
             let _ = Identity::login(&request.extensions(), user_id.to_string());
-            FlashMessage::info("You were logged in").send();
-            return Redirect::to("/").see_other();
+            let _ = session.insert("_flash", "You were logged in");
+            return HttpResponse::Found()
+                .append_header((header::LOCATION, "/"))
+                .finish();
         }
     }
 
     // Password incorrect
-    FlashMessage::error("Invalid password").send();
-    return Redirect::to("/login").see_other();
+    let _ = session.insert("_flash", "Invalid password");
+    return HttpResponse::Found()
+        .append_header((header::LOCATION, "/login"))
+        .finish();
 }
 
 #[get("/register")]
-async fn register(flash_messages: IncomingFlashMessages) -> impl Responder {
+async fn register(flash_messages: Option<FlashMessages>) -> impl Responder {
     RegisterTemplate {
-        flashes: get_flashes(flash_messages),
+        flashes: flash_messages.unwrap_or_default().messages,
         error: String::from(""),
         email: String::from(""),
         username: String::from(""),
@@ -424,23 +452,22 @@ async fn register(flash_messages: IncomingFlashMessages) -> impl Responder {
 }
 
 #[post("/register")]
-async fn post_register(info: web::Form<RegisterInfo>) -> impl Responder {
+async fn post_register(info: web::Form<RegisterInfo>, session: Session) -> impl Responder {
     if info.username.len() == 0 {
-        FlashMessage::error("You have to enter a username").send();
-        return Redirect::to("/register").see_other()
-
-    } else if info.email.len() == 0 || !info.email.contains("@"){
-        FlashMessage::error("You have to enter a valid email address").send();
-        return Redirect::to("/register").see_other()
+        let _ = session.insert("_flash", "You have to enter a username");
+        return Redirect::to("/register").see_other();
+    } else if info.email.len() == 0 || !info.email.contains("@") {
+        let _ = session.insert("_flash", "You have to enter a valid email address");
+        return Redirect::to("/register").see_other();
     } else if info.password.len() == 0 {
-        FlashMessage::error("You have to enter a password").send();
-        return Redirect::to("/register").see_other()
+        let _ = session.insert("_flash", "You have to enter a password");
+        return Redirect::to("/register").see_other();
     } else if info.password != info.password2 {
-        FlashMessage::error("The two passwords do not match").send();
-        return Redirect::to("/register").see_other()
+        let _ = session.insert("_flash", "The two passwords do not match");
+        return Redirect::to("/register").see_other();
     } else if get_user_id(&info.username) != -1 {
-        FlashMessage::error("The username is already taken").send();
-        return Redirect::to("/register").see_other()
+        let _ = session.insert("_flash", "The username is already taken");
+        return Redirect::to("/register").see_other();
     }
 
     let hash = bcrypt::hash(info.password.clone()).unwrap();
@@ -453,15 +480,15 @@ async fn post_register(info: web::Form<RegisterInfo>) -> impl Responder {
         )
         .unwrap();
     if result == 0 {
-        FlashMessage::error("Invalid info").send();
+        let _ = session.insert("_flash", "Invalid info");
         return Redirect::to("/register").see_other();
     }
-    FlashMessage::info("You were successfully registered and can login now").send();
+    let _ = session.insert("_flash", "You were successfully registered and can login now");
     Redirect::to("/login").see_other()
 }
 #[get("/logout")]
-async fn logout(user: Identity) -> impl Responder {
-    FlashMessage::info("You were logged out").send();
+async fn logout(user: Identity, session: Session) -> impl Responder {
+    let _ = session.insert("_flash", "You were logged out");
     user.logout();
     Redirect::to("/public").see_other()
 }
