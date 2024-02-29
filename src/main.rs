@@ -1,17 +1,16 @@
 mod template_structs;
+mod flash_messages;
 
 use actix_files as fs;
+use actix_identity::config::LogoutBehaviour;
 use actix_identity::Identity;
 use actix_identity::IdentityMiddleware;
 use actix_session::Session;
-use actix_session::SessionExt;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::dev;
-use actix_web::error::ErrorBadRequest;
+
 use actix_web::http::{header, StatusCode};
 use actix_web::web::{self, Redirect};
-use actix_web::Error;
-use actix_web::FromRequest;
+
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -20,33 +19,8 @@ use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
-use serde::Deserialize;
 use template_structs::structs::*;
-use futures::future::{ok, err, Ready};
-#[derive(Debug, Deserialize, Default)]
-pub struct FlashMessages {
-    messages: Vec<String>,
-}
-
-impl FromRequest for FlashMessages {
-    type Error = Error;
-    type Future = Ready<Result<Self, Self::Error>>;
-
-    fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
-        let s = req.get_session();
-        if let Ok(item) = s.get::<String>("_flash") {
-            if let Some(message) = item {
-                s.clear();
-                ok(FlashMessages { messages:  message.split(",").map(|s| s.to_string()).collect()  })
-            } else {
-                err(ErrorBadRequest("no flash message"))
-            }
-        } else {
-            err(ErrorBadRequest("no flash message"))
-        }
-
-    }
-}
+use flash_messages::flash_messages::*;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -55,12 +29,12 @@ async fn main() -> std::io::Result<()> {
     }
     HttpServer::new(move || {
         App::new()
-            .wrap(IdentityMiddleware::default())
+            .wrap(IdentityMiddleware::builder().logout_behaviour(LogoutBehaviour::DeleteIdentityKeys).build())
             .service(fs::Files::new("/static", "./static/").index_file("index.html"))
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
-                    .cookie_secure(true)
-                    .cookie_http_only(true)
+                    .cookie_secure(false)
+                    .cookie_http_only(false)
                     .build(),
             )
             .service(register)
