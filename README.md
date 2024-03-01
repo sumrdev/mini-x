@@ -4,7 +4,7 @@ Having git on the machine is neccesary
 
 Navigate a terminal to the desired directory. Then use the following command 
 ```
-https://github.com/sumrdev/mini-x.git
+git clone https://github.com/sumrdev/mini-x.git
 ```
 
 ## Installing rust 
@@ -28,9 +28,14 @@ First you need to build the project. This is done from the root foulder in the p
 ```
 cargo build
 ```
+
 After it has successfully build and no errors occoured run the project.
 ```
-cargo run 
+cargo run --bin mini-x
+```
+In the case of of dependencies not being installed run - do not run unless errors are encountered
+```
+cargo install --path ./
 ```
 Then  in your bowser of choice connect to [localhost:5000](http://localhost:5000)
 

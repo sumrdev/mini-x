@@ -2,13 +2,13 @@ version: '3.3'
 
 services:
   app:
-    build: .
+    image: minixgroupd/miniximage:latest
     container_name: mini-x
     ports:
       - "5000:5000"
 
   api:
-    build: .
+    image: minixgroupd/miniximage:latest
     container_name: mini-x-api
     ports:
       - "5001:5001"
