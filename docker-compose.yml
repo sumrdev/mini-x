@@ -1,15 +1,23 @@
 version: '3.3'
 
+networks:
+ main:
+  name: mini-x-network
+
 services:
   app:
     image: minixgroupd/miniximage:latest
     container_name: mini-x
+    networks:
+      - main
     ports:
       - "5000:5000"
 
   api:
     image: minixgroupd/miniximage:latest
     container_name: mini-x-api
+    networks:
+      - main
     ports:
       - "5001:5001"
     command: ./api
