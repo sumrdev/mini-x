@@ -7,7 +7,7 @@ from pathlib import Path
 from contextlib import closing
 
 
-BASE_URL = 'http://mini-x-api:5001'
+BASE_URL = 'http://localhost:5001' # REPLACEURL
 DATABASE = "/tmp/mini-x_api.db"
 USERNAME = 'simulator'
 PWD = 'super_safe!'
