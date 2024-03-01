@@ -304,7 +304,7 @@ async fn follow_user(
         let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
         let mut message = String::from("You are now following ");
         message.push_str(&_target_username);
-        let _ = session.insert("_flash", message);
+        add_flash(session, message.as_str());
     } else {
         return HttpResponse::Found()
             .append_header((header::LOCATION, "User not found"))
@@ -330,7 +330,7 @@ async fn unfollow_user(
         let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
         let mut message = String::from("You are no longer following ");
         message.push_str(&_target_username);
-        let _ = session.insert("_flash", message);
+        add_flash(session, message.as_str());
 
     } else {
         return HttpResponse::Found()
@@ -350,7 +350,7 @@ async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>, sessio
         values (?, ?, ?, 0)",
             params![user.id().unwrap(), msg.text, Utc::now().to_rfc3339()],
         );
-        let _ = session.insert("_flash", "Your message was recorded");
+        add_flash(session, "Your message was recorded");
         return HttpResponse::Found()
             .append_header((header::LOCATION, "/"))
             .finish();
@@ -363,7 +363,7 @@ async fn add_message(user: Option<Identity>, msg: web::Form<MessageInfo>, sessio
 #[get("/login")]
 async fn login(flash_messages: Option<FlashMessages>, user: Option<Identity>, session: Session) -> impl Responder {
     if let Some(_) = user {
-        let _ = session.insert("_flash", "You are already logged in");
+        add_flash(session, "You are already logged in");
         HttpResponse::TemporaryRedirect()
             .append_header((header::LOCATION, "/"))
             .finish()
@@ -382,13 +382,14 @@ async fn login(flash_messages: Option<FlashMessages>, user: Option<Identity>, se
 
 #[post("/login")]
 async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest, session: Session) -> impl Responder {
+    
     let result: Result<String> = connect_db().query_row(
         "select pw_hash from user where username = ?",
         params![info.username],
         |row| row.get(0),
     );
     if result.is_err() {
-        let _ = session.insert("_flash", "Invalid username");
+        add_flash(session, "Invalid username");
         return HttpResponse::Found()
             .append_header((header::LOCATION, "/login"))
             .finish();
@@ -399,7 +400,8 @@ async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest, session: S
             // Successful login
             let user_id = get_user_id(&info.username);
             let _ = Identity::login(&request.extensions(), user_id.to_string());
-            let _ = session.insert("_flash", "You were logged in");
+            add_flash(session, "You were logged in");
+
             return HttpResponse::Found()
                 .append_header((header::LOCATION, "/"))
                 .finish();
@@ -407,7 +409,7 @@ async fn post_login(info: web::Form<LoginInfo>, request: HttpRequest, session: S
     }
 
     // Password incorrect
-    let _ = session.insert("_flash", "Invalid password");
+    add_flash(session, "Invalid password");
     return HttpResponse::Found()
         .append_header((header::LOCATION, "/login"))
         .finish();
@@ -428,19 +430,19 @@ async fn register(flash_messages: Option<FlashMessages>) -> impl Responder {
 #[post("/register")]
 async fn post_register(info: web::Form<RegisterInfo>, session: Session) -> impl Responder {
     if info.username.len() == 0 {
-        let _ = session.insert("_flash", "You have to enter a username");
+        add_flash(session, "You have to enter a username");
         return Redirect::to("/register").see_other();
     } else if info.email.len() == 0 || !info.email.contains("@") {
-        let _ = session.insert("_flash", "You have to enter a valid email address");
+        add_flash(session, "You have to enter a valid email address");
         return Redirect::to("/register").see_other();
     } else if info.password.len() == 0 {
-        let _ = session.insert("_flash", "You have to enter a password");
+        add_flash(session, "You have to enter a password");
         return Redirect::to("/register").see_other();
     } else if info.password != info.password2 {
-        let _ = session.insert("_flash", "The two passwords do not match");
+        add_flash(session, "The two passwords do not match");
         return Redirect::to("/register").see_other();
     } else if get_user_id(&info.username) != -1 {
-        let _ = session.insert("_flash", "The username is already taken");
+        add_flash(session, "The username is already taken");
         return Redirect::to("/register").see_other();
     }
 
@@ -454,15 +456,15 @@ async fn post_register(info: web::Form<RegisterInfo>, session: Session) -> impl 
         )
         .unwrap();
     if result == 0 {
-        let _ = session.insert("_flash", "Invalid info");
+        add_flash(session, "Invalid info");
         return Redirect::to("/register").see_other();
     }
-    let _ = session.insert("_flash", "You were successfully registered and can login now");
+    add_flash(session, "You were successfully registered and can login now");
     Redirect::to("/login").see_other()
 }
 #[get("/logout")]
 async fn logout(user: Identity, session: Session) -> impl Responder {
-    let _ = session.insert("_flash", "You were logged out");
+    add_flash(session, "You were logged out");
     user.logout();
     Redirect::to("/public").see_other()
 }
