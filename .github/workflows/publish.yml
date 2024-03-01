@@ -20,7 +20,7 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - name: Build and Test
+      - name: Build
         run: |
           cargo build --verbose
 
