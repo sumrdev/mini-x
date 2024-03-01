@@ -32,6 +32,9 @@ async fn main() -> std::io::Result<()> {
     let signing_key = Key::generate(); // This will usually come from configuration!
     let message_store = CookieMessageStore::builder(signing_key).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
+
+    establish_connection();
+    
     HttpServer::new(move || {
         App::new()
             .wrap(IdentityMiddleware::default())

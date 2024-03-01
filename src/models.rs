@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+use diesel::{prelude::*, sql_types::Integer};
 use crate::schema::{follower, message};
 
 use super::schema::user;
@@ -7,7 +7,7 @@ use super::schema::user;
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct User {
-    pub user_id: i32,
+    pub user_id: Integer,
     pub username: String,
     pub email: String,
     pub pw_hash: String,
