@@ -33,26 +33,6 @@ jobs:
           cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/miniximage:webbuildcache
           cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/miniximage:webbuildcache,mode=max
 
-#      - name: Build and push mysqlimage
-#        uses: docker/build-push-action@v2
-#        with:
-#          context: .
-#          file: ./Dockerfile-mysql
-#          push: true
-#          tags: ${{ secrets.DOCKER_USERNAME }}/mysqlimage:latest
-#          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/mysqlimage:mysqlbuildcache
-#          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/mysqlimage:mysqlbuildcache,mode=max
-
-#      - name: Build and push flagtoolimage
-#        uses: docker/build-push-action@v2
-#        with:
-#          context: .
-#          file: ./Dockerfile-flagtool
-#         push: true
-#          tags: ${{ secrets.DOCKER_USERNAME }}/flagtoolimage:latest
-#          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/flagtoolimage:flagtoolbuildcache
-#          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/flagtoolimage:flagtoolbuildcache,mode=max
-
       - name: Test minix
         run: |
           docker build -t $DOCKER_USERNAME/minixtestimage -f Dockerfile_mini-x_test .
@@ -61,19 +41,19 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
 
-#      - name: Configure SSH
-#        run: |
-#          mkdir -p ~/.ssh/
-#          echo "$SSH_KEY" > ~/.ssh/do_ssh_key
-#          chmod 600 ~/.ssh/do_ssh_key
-#        env:
-#          SSH_KEY: ${{ secrets.SSH_KEY }}
-#
-#      - name: Deploy to server
-#        run: >
-#          ssh $SSH_USER@$SSH_HOST
-#          -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no
-#          'docker compose -f /vagrant/docker-compose.yml up --pull always -d'
-#        env:
-#          SSH_USER: ${{ secrets.SSH_USER }}
-#          SSH_HOST: ${{ secrets.SSH_HOST }}
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/do_ssh_key
+          chmod 600 ~/.ssh/do_ssh_key
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+      - name: Deploy to server
+        run: >
+          ssh $SSH_USER@$SSH_HOST
+          -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no
+          'docker compose -f /vagrant/docker-compose.yml up --pull always -d'
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
