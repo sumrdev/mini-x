@@ -15,6 +15,7 @@ use actix_web_flash_messages::{storage::CookieMessageStore, FlashMessagesFramewo
 use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use askama_actix::Template;
 use chrono::Utc;
+use md5::digest::crypto_common::ParBlocksSizeUser;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
@@ -22,7 +23,9 @@ use template_structs::structs::*;
 use diesel::sqlite::{Sqlite, SqliteConnection};
 use diesel::{prelude::*, Connection as Conn};
 use dotenvy::dotenv;
+use self::models::{NewUser, User};
 use std::env;
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -34,7 +37,7 @@ async fn main() -> std::io::Result<()> {
     let message_framework = FlashMessagesFramework::builder(message_store).build();
 
     establish_connection();
-    
+
     HttpServer::new(move || {
         App::new()
             .wrap(IdentityMiddleware::default())
@@ -86,6 +89,18 @@ pub fn establish_connection() -> SqliteConnection {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     SqliteConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+}
+
+pub fn create_post(conn: &mut SqliteConnection, username: &str, email: &str, pw_hash: &str) -> User {
+    use crate::schema::user;
+
+    let new_post = NewUser { username, email, pw_hash };
+
+    diesel::insert_into(user::table)
+        .values(&new_post)
+        .returning(User::as_returning())
+        .get_result(conn)
+        .expect("Error saving new post")
 }
 
 fn get_user_id(username: &str) -> i32 {
