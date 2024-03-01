@@ -1,3 +1,5 @@
+pub mod models;
+pub mod schema;
 mod template_structs;
 use actix_files as fs;
 use actix_session::config::BrowserSession;
@@ -17,6 +19,10 @@ use md5::{Digest, Md5};
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
 use template_structs::structs::*;
+use diesel::sqlite::{Sqlite, SqliteConnection};
+use diesel::{prelude::*, Connection as Conn};
+use dotenvy::dotenv;
+use std::env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -69,6 +75,14 @@ fn init_db() -> rusqlite::Result<()> {
 
     conn.execute_batch(&schema_sql)?;
     Ok(())
+}
+
+pub fn establish_connection() -> SqliteConnection {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    SqliteConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
 fn get_user_id(username: &str) -> i32 {
