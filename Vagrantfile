@@ -27,7 +27,7 @@ Vagrant.configure("2") do |config|
   # https://discuss.hashicorp.com/t/vagrant-digital-ocean-plugin-broken-with-2-3-6/54132
   config.vm.define "droplet" do |config|
     config.vm.provider :digital_ocean do |provider, override|
-      override.ssh.private_key_path = '~/.ssh/id_ed25519'
+      override.ssh.private_key_path = "./ssh-keys/ssh-key"
       override.vm.box = 'digital_ocean'
       override.nfs.functional = false
       override.vm.allowed_synced_folder_types = :rsync
