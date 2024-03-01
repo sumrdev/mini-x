@@ -24,10 +24,10 @@ jobs:
         run: |
           cargo build --verbose
 
-      - name: Generate Release Number
+      - name: Get Release Tag
         id: generate_release
-        run: echo "RELEASE_VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-
+        run: RELEASE_VERSION=$(git describe --tags --abbrev=0) >> $GITHUB_ENV
+  
       - name: Zipping files
         run: zip -r "${{ github.ref_name }}-linux-x64.zip" .
 
@@ -38,3 +38,5 @@ jobs:
           tag_name: ${{ env.RELEASE_VERSION }}
           files: |
             *.zip
+
+
