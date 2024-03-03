@@ -1,5 +1,3 @@
-pub mod models;
-pub mod schema;
 mod template_structs;
 use actix_files as fs;
 use actix_session::config::BrowserSession;
@@ -20,12 +18,8 @@ use md5::{Digest, Md5};
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
 use template_structs::structs::*;
-use diesel::sqlite::{Sqlite, SqliteConnection};
-use diesel::{prelude::*, Connection as Conn};
-use dotenvy::dotenv;
-use self::models::{NewUser, User};
-use std::env;
 
+use mini_x::*;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -35,8 +29,6 @@ async fn main() -> std::io::Result<()> {
     let signing_key = Key::generate(); // This will usually come from configuration!
     let message_store = CookieMessageStore::builder(signing_key).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
-
-    establish_connection();
 
     HttpServer::new(move || {
         App::new()
@@ -83,26 +75,6 @@ fn init_db() -> rusqlite::Result<()> {
     Ok(())
 }
 
-pub fn establish_connection() -> SqliteConnection {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    SqliteConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
-}
-
-pub fn create_post(conn: &mut SqliteConnection, username: &str, email: &str, pw_hash: &str) -> User {
-    use crate::schema::user;
-
-    let new_post = NewUser { username, email, pw_hash };
-
-    diesel::insert_into(user::table)
-        .values(&new_post)
-        .returning(User::as_returning())
-        .get_result(conn)
-        .expect("Error saving new post")
-}
-
 fn get_user_id(username: &str) -> i32 {
     let conn = connect_db();
     let query_result = conn.query_row("SELECT user_id FROM user WHERE username = ?1", params![username], |row| { Ok(row.get(0))});
@@ -110,7 +82,7 @@ fn get_user_id(username: &str) -> i32 {
     
 }
 
-fn get_user(user_option: Option<Identity>) -> Option<User> {
+fn get_user(user_option: Option<Identity>) -> Option<UserTemplate> {
     if let Some(user) = user_option {
         let conn = connect_db();
         let user_id = user.id().unwrap();
@@ -119,7 +91,7 @@ fn get_user(user_option: Option<Identity>) -> Option<User> {
             "select * from user where user_id = ?",
             params![user_id],
             |row| {
-                Ok(Some(User {
+                Ok(Some(UserTemplate {
                     user_id: row.get(0)?,
                     username: row.get(1)?,
                     email: row.get(2)?,
@@ -265,7 +237,7 @@ async fn user_timeline(
         "select * from user where username = ?",
         params![username],
         |row| {
-            Ok(User {
+            Ok(UserTemplate {
                 user_id: row.get(0)?,
                 username: row.get(1)?,
                 email: row.get(2)?,
@@ -476,8 +448,11 @@ async fn post_register(info: web::Form<RegisterInfo>) -> impl Responder {
     }
 
     let hash = bcrypt::hash(info.password.clone()).unwrap();
+    
+    let conn = &mut establish_connection();
+    let _ = create_user(conn, &info.username, &info.email, &hash);
 
-    let result = connect_db()
+    /* let result = connect_db()
         .execute(
             "insert into user (
             username, email, pw_hash) values (?, ?, ?)",
@@ -487,7 +462,8 @@ async fn post_register(info: web::Form<RegisterInfo>) -> impl Responder {
     if result == 0 {
         FlashMessage::error("Invalid info").send();
         return Redirect::to("/register").see_other();
-    }
+    } */
+
     FlashMessage::info("You were successfully registered and can login now").send();
     Redirect::to("/login").see_other()
 }

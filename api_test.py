@@ -8,7 +8,7 @@ from contextlib import closing
 
 
 BASE_URL = 'http://127.0.0.1:5001'
-DATABASE = "/tmp/mini-x_api.db"
+DATABASE = "/tmp/mini-x.db"
 USERNAME = 'simulator'
 PWD = 'super_safe!'
 CREDENTIALS = ':'.join([USERNAME, PWD]).encode('ascii')

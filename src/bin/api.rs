@@ -8,6 +8,7 @@ use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use pwhash::bcrypt;
+use mini_x::*;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -33,7 +34,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn get_database_string() -> String {
-    String::from("/tmp/mini-x_api.db")
+    String::from("/tmp/mini-x.db")
 }
 
 fn connect_db() -> Connection {
@@ -87,11 +88,14 @@ async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>,
 
     let hash = bcrypt::hash(info.pwd.clone()).unwrap();
 
-    let _ = connect_db().execute(
+    let conn = &mut establish_connection();
+    let _ = create_user(conn, &info.username, &info.email, &hash);
+
+    /* let _ = connect_db().execute(
         "insert into user (
             username, email, pw_hash) values (?, ?, ?)",
         params![info.username, info.email, hash ],
-    );
+    ); */
 
     
     if let Some(err_msg) = error {
