@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn get_database_string() -> String {
-    String::from("/tmp/mini-x_api.db")
+    String::from("/databases/mini-x.db")
 }
 
 fn connect_db() -> Connection {
