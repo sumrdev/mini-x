@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn get_database_string() -> String {
-    String::from("/tmp/mini-x_api.db")
+    String::from("/databases/mini-x.db")
 }
 
 fn connect_db() -> Connection {
@@ -93,7 +93,6 @@ async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>,
         params![info.username, info.email, hash ],
     );
 
-    
     if let Some(err_msg) = error {
         let reg_err = RegisterError {status: 400, error_msg: err_msg.to_string()};
         HttpResponse::BadRequest().json(reg_err)
@@ -173,7 +172,6 @@ async fn messages_per_user_post(path: web::Path<(String,)>, msg: web::Json<Messa
         HttpResponse::NotFound().json("")
     }
 }
-
 
 #[get("fllws/{username}")]
 async fn follows_get(path: web::Path<(String,)>, amount: web::Query<MessageAmount>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
