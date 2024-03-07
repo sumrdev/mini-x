@@ -2,18 +2,12 @@ version: '3.3'
 
 services:
   app:
+    build: .
     image: minixgroupd/miniximage:latest
     container_name: mini-x
     volumes:
       - ./databases:/databases/
     ports:
       - "5000:5000"
-
-  api:
-    image: minixgroupd/miniximage:latest
-    container_name: mini-x-api
-    volumes:
-      - ./databases:/databases/
-    ports:
       - "5001:5001"
-    command: ./api
+
