@@ -32,7 +32,7 @@ pub async fn start() -> std::io::Result<()> {
 }
 
 fn get_database_string() -> String {
-    String::from("/tmp/mini-x.db")
+    String::from("/databases/mini-x.db")
 }
 
 fn connect_db() -> Connection {

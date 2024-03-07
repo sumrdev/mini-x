@@ -69,11 +69,19 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
 
+      - name: Update server docker compose
+        run: >
+          scp -i ~/.ssh/do_ssh_key 
+          -o StrictHostKeyChecking=no 
+          ./docker-compose.yml 
+          $SSH_USER@$SSH_HOST:/vagrant/docker-compose.yml
+          
+
       - name: Deploy to server
         run: >
           ssh $SSH_USER@$SSH_HOST
           -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no
-          'docker compose -f /vagrant/docker-compose.yml up --pull always -d'
+          'docker compose -f /vagrant/docker-compose.yml up --pull always -d --remove-orphans'
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}

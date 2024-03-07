@@ -166,6 +166,8 @@ cython_debug/
 # Added by cargo
 /target
 
+/databases
+
 .vagrant/
 
 ssh-keys

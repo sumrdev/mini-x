@@ -2,7 +2,6 @@ version: '3.3'
 
 services:
   app:
-    build: .
     image: minixgroupd/miniximage:latest
     container_name: mini-x
     volumes:

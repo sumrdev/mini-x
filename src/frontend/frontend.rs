@@ -60,10 +60,10 @@ fn connect_db() -> Connection {
 }
 
 fn init_db() -> rusqlite::Result<()> {
-    let schema_sql = std::fs::read_to_string("schema.sql").unwrap();
+    const SCHEMA_SQL: &str = include_str!("../schema.sql");
     let conn = connect_db();
 
-    conn.execute_batch(&schema_sql)?;
+    conn.execute_batch(&SCHEMA_SQL)?;
     Ok(())
 }
 

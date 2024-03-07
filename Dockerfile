@@ -25,5 +25,4 @@ RUN apk add libgcc
 EXPOSE 5000
 EXPOSE 5001
 
-#CMD ["./mini-x"]
-CMD [ "tail", "-f", "/dev/null" ]
+CMD ["./mini-x"]
