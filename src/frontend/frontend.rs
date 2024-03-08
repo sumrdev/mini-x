@@ -7,6 +7,7 @@ use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 
 use actix_web::http::{header, StatusCode};
 use actix_web::web::{self, Redirect};
+use diesel::connection::SimpleConnection;
 
 use crate::create_msg;
 use crate::create_user;
@@ -16,6 +17,7 @@ use crate::frontend::flash_messages::*;
 use crate::frontend::template_structs::*;
 use crate::get_passwd_hash;
 use crate::get_public_messages;
+use crate::get_timeline;
 use crate::get_user_by_id;
 use crate::get_user_by_name;
 use crate::unfollow;
@@ -30,7 +32,6 @@ use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
-use rusqlite::{params, Connection, Result};
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
@@ -72,27 +73,20 @@ fn get_database_string() -> String {
     String::from("/tmp/mini-x.db")
 }
 
-fn connect_db() -> Connection {
-    Connection::open(get_database_string()).unwrap()
-}
-
-fn init_db() -> rusqlite::Result<()> {
+fn init_db(){
     const SCHEMA_SQL: &str = include_str!("../schema.sql");
-    let conn = connect_db();
-
-    conn.execute_batch(&SCHEMA_SQL)?;
-    Ok(())
+    let mut conn = establish_connection();
+    let _ = conn.batch_execute(&SCHEMA_SQL);
 }
 
 fn get_user_id(username: &str) -> i32 {
     let diesel_conn = &mut establish_connection();
     let user = get_user_by_name(diesel_conn, username);
     if let Some(user) = user {
-        return user.user_id;
+        user.user_id
     } else {
         -1
     }
-
 }
 
 fn get_user_template(user_id: i32) -> Option<UserTemplate> {
@@ -110,7 +104,6 @@ fn get_user_template(user_id: i32) -> Option<UserTemplate> {
 }
 
 fn get_user(user_option: Option<Identity>) -> Option<UserTemplate> {
-
     if let Some(user) = user_option {
         let user_id = user.id().unwrap().parse::<i32>().unwrap();
         get_user_template(user_id)
@@ -147,35 +140,8 @@ fn format_messages (messages: Vec<(Message, User)>) -> Vec<Messages>{
 #[get("/")]
 async fn timeline(flash: Option<FlashMessages>, user: Option<Identity>) -> impl Responder {
     if let Some(user) = get_user(user) {
-        //let mut messages = get_messages();
-        // you need to login on /register to see any page for now
-        let u = user.user_id;
-        let conn = connect_db();
-        let prepared_statement = conn.prepare(
-            "select message.*, user.* from message, user
-        where message.flagged = 0 and message.author_id = user.user_id and (
-            user.user_id = ? or
-            user.user_id in (select whom_id from follower
-                                    where who_id = ?))
-        order by message.pub_date desc limit ?",
-        );
-        let mut stmt = prepared_statement.unwrap();
-        let query_result = stmt.query_map([u.clone(), u, 32], |row| {
-            Ok(Messages {
-                text: row.get(2)?,
-                gravatar_url: gravatar_url(&row.get::<_, String>(7)?),
-                username: row.get(6)?,
-                pub_date: {
-                    let date_str: String = row.get(3)?;
-                    chrono::DateTime::parse_from_rfc3339(&date_str)
-                        .unwrap()
-                        .to_utc()
-                },
-            })
-        });
-
-        let messages: Vec<Messages> = query_result.unwrap().map(|m| m.unwrap()).collect();
-        println!("{:?}", messages);
+        let diesel_conn = &mut establish_connection();
+        let messages = format_messages(get_timeline(diesel_conn,  user.user_id, 32));
 
         let rendered = TimelineTemplate {
             messages,

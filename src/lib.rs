@@ -2,7 +2,6 @@ pub mod api;
 pub mod frontend;
 pub mod models;
 pub mod schema;
-use crate::schema::follower::{who_id, whom_id};
 
 use self::models::*;
 use diesel::sqlite::SqliteConnection;
@@ -133,27 +132,28 @@ pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Ve
         .expect("Error loading messages and post")
 }
 
-// pub fn get_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
-//     use self::schema::follower;
-//     use self::schema::message;
-//     use self::schema::user;
+pub fn get_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
+    use self::schema::follower;
+    use self::schema::message;
+    use self::schema::user;
 
-//     let subquery = follower::who_id.eq(id);
+    message::table
+        .inner_join(user::table.on(message::author_id.eq(user::user_id)))
+            .filter(message::flagged.eq(0))
+            .filter(
+                user::user_id.eq(id)
+                .or(user::user_id.eq_any(
+                    follower::table
+                    .select(follower::whom_id)
+                    .filter(follower::who_id.eq(id)))
+         ))
 
-//     message::table
-//         .inner_join(user::table.on(message::author_id.eq(user::user_id)))
-//             .filter(message::flagged.eq(0)).filter(
-//                 user::user_id.eq(id)
-//                 .or(
-//                     subquery
-//          ))
-
-//         .limit(limit.into())
-//         .select((Message::as_select(), User::as_select()))
-//         .order_by(message::pub_date.desc())
-//         .load(conn)
-//         .expect("Error loading messages and post")
-// }
+        .limit(limit.into())
+        .select((Message::as_select(), User::as_select()))
+        .order_by(message::pub_date.desc())
+        .load(conn)
+        .expect("Error loading messages and post")
+}
 
 pub fn get_passwd_hash(conn: &mut SqliteConnection, username: &str) -> Option<String> {
     use self::schema::user;
