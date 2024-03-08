@@ -85,7 +85,7 @@ pub fn follow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
         .expect("Error creating new message");
 }
 
-pub fn unfollow_user(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
+pub fn unfollow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
     use self::schema::follower;
     let _ = diesel::delete(
         follower::table.filter(

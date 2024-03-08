@@ -17,6 +17,7 @@ use crate::frontend::template_structs::*;
 use crate::get_public_messages;
 use crate::get_user_by_id;
 use crate::get_user_by_name;
+use crate::unfollow;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -292,7 +293,8 @@ async fn follow_user(
         let _target_id = get_user_id(&_target_username);
         let conn = &mut establish_connection();
         let _ = follow(conn, _current_user.id().unwrap().parse::<i32>().unwrap(),_target_id);
-        let message = String::from("You are now following ");
+        let mut message = String::from("You are now following ");
+        message.push_str(&_target_username);
         add_flash(session, message.as_str());
     } else {
         return HttpResponse::Found()
@@ -314,9 +316,8 @@ async fn unfollow_user(
     if let Some(_current_user) = user {
         let _target_username = path.clone();
         let _target_id = get_user_id(&_target_username);
-        let _conn = connect_db();
-        let sql = "delete from follower where who_id=? and whom_id=?";
-        let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
+        let conn = &mut establish_connection();
+        let _ = unfollow(conn, _current_user.id().unwrap().parse::<i32>().unwrap(), _target_id);
         let mut message = String::from("You are no longer following ");
         message.push_str(&_target_username);
         add_flash(session, message.as_str());
