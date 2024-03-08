@@ -21,3 +21,4 @@ md-5 = "0.10.6"
 futures = "0.3.30"
 simple-logging = "2.0.2"
 log = "0.4.21"
+prometheus = { version = "0.9", features = ["process"] }

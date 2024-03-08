@@ -4,10 +4,9 @@ use actix_identity::Identity;
 use actix_identity::IdentityMiddleware;
 use actix_session::Session;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-
 use actix_web::http::{header, StatusCode};
 use actix_web::web::{self, Redirect};
-
+use prometheus::Counter;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -16,6 +15,7 @@ use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
+use prometheus::Opts;
 use crate::frontend::template_structs::*;
 use crate::frontend::flash_messages::*;
 
@@ -68,6 +68,9 @@ fn init_db() -> rusqlite::Result<()> {
 }
 
 fn get_user_id(username: &str) -> i32 {
+    let counter_ops = Opts::new("counter", "Counting the number of times the server has been accessed");
+    let counter = Counter::with_opts(counter_ops).unwrap();
+    counter.inc();
     let conn = connect_db();
     let query_result = conn.query_row(
         "SELECT user_id FROM user WHERE username = ?1",
