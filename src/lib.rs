@@ -3,7 +3,7 @@ pub mod frontend;
 pub mod models;
 pub mod schema;
 
-use self::models::{NewUser, User};
+use self::models::*;
 use diesel::sqlite::SqliteConnection;
 use diesel::{prelude::*, Connection as Conn};
 use dotenvy::dotenv;
@@ -37,4 +37,17 @@ pub fn create_user(
         .returning(User::as_returning())
         .get_result(conn)
         .expect("Error saving new post")
+}
+
+pub fn get_public_messages(conn: &mut SqliteConnection, limit: i32) -> Vec<(Message, User)> {
+    use self::schema::user;
+    use self::schema::message;
+
+    message::table.inner_join(user::table.on(message::author_id.eq(user::user_id)))
+        .filter(message::flagged.eq(0))
+        .order_by(message::pub_date.desc())
+        .limit(limit.into())
+        .select((Message::as_select(), User::as_select()))
+        .load(conn)
+        .expect("Error loading messages and post")
 }
