@@ -1,0 +1,18 @@
+version: '3.3'
+
+networks:
+ main:
+  name: mini-x-network
+
+services:
+  app:
+    build: .
+    container_name: mini-x
+    networks:
+      - main
+    volumes:
+      - ./databases:/databases/
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+
