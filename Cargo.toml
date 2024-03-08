@@ -14,10 +14,12 @@ askama_actix = "0.14.0"
 chrono = {version ="0.4.34", features = ["serde"]}
 filters = "0.4.0"
 rusqlite = "0.30.0"
-actix-web-flash-messages = { version = "0.4", features = ["cookies"] }
 serde = "1.0.196"
 pwhash = "1"
 actix-identity = "0.7.0"
 md-5 = "0.10.6"
 diesel = { version = "2.1.0", features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
 dotenvy = "0.15"
+futures = "0.3.30"
+simple-logging = "2.0.2"
+log = "0.4.21"

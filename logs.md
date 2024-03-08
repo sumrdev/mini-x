@@ -17,3 +17,10 @@ Flashes got up and working after a bit of fiddling
 After we got templates up and running we needed to get sessions working. We looked at a few methods of getting it to work.
 Found nice library for it!
 Then we got the database working, this was not too bad. Excetp we had to figure out how to get the real fields out instead of random ones.
+
+## API
+
+For the API we just created a seperated actix project that worked independantly from the web app. 
+Having knowledge and code from developing the web app made implementing the API very smooth.
+The implementation of default values for the query parameters "no" and "latest" didn't work.
+We skipped denying unauthorized requests as the test suite didn't cover it.

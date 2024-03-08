@@ -1,4 +1,3 @@
-mod template_structs;
 use actix_files as fs;
 use actix_session::config::BrowserSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
@@ -9,17 +8,15 @@ use actix_identity::Identity;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
-use actix_web_flash_messages::{storage::CookieMessageStore, FlashMessagesFramework};
-use actix_web_flash_messages::{FlashMessage, IncomingFlashMessages};
 use askama_actix::Template;
 use chrono::Utc;
 use md5::digest::crypto_common::ParBlocksSizeUser;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
-use template_structs::structs::*;
+use template_structs::*;
 
-use mini_x::*;
+use super::template_structs;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
