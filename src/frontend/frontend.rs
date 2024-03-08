@@ -14,6 +14,7 @@ use crate::establish_connection;
 use crate::follow;
 use crate::frontend::flash_messages::*;
 use crate::frontend::template_structs::*;
+use crate::get_passwd_hash;
 use crate::get_public_messages;
 use crate::get_user_by_id;
 use crate::get_user_by_name;
@@ -387,19 +388,16 @@ async fn post_login(
     request: HttpRequest,
     session: Session,
 ) -> impl Responder {
-    let result: Result<String> = connect_db().query_row(
-        "select pw_hash from user where username = ?",
-        params![info.username],
-        |row| row.get(0),
-    );
-    if result.is_err() {
+    let conn = &mut establish_connection();
+    let result = get_passwd_hash(conn, &info.username);
+    if result.is_none() {
         add_flash(session, "Invalid username");
         return HttpResponse::Found()
             .append_header((header::LOCATION, "/login"))
             .finish();
     }
     println!("{:?}", result);
-    if let Ok(stored_hash) = result {
+    if let Some(stored_hash) = result {
         if bcrypt::verify(info.password.clone(), &stored_hash) {
             // Successful login
             let user_id = get_user_id(&info.username);

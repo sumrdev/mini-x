@@ -156,12 +156,13 @@ pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Ve
 //         .expect("Error loading messages and post")
 // }
 
-pub fn get_passwd_hash(conn: &mut SqliteConnection, username: &str) -> String {
+pub fn get_passwd_hash(conn: &mut SqliteConnection, username: &str) -> Option<String> {
     use self::schema::user;
 
     user::table
         .filter(user::username.eq(username))
         .select(user::pw_hash)
         .first(conn)
+        .optional()
         .expect("Error loading messages and post")
 }
