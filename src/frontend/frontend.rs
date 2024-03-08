@@ -15,30 +15,12 @@ use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder
 use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
-use prometheus::Encoder;
-use prometheus::TextEncoder;
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
 use prometheus::Opts;
 use crate::frontend::template_structs::*;
 use crate::frontend::flash_messages::*;
-use prometheus::{IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
-use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
-
-use lazy_static::lazy_static;
-use prometheus::{
-    register_int_counter, register_int_counter_vec, register_int_gauge, register_int_gauge_vec,
-};
-
-lazy_static! {
-    static ref A_INT_COUNTER: IntCounter =
-        register_int_counter!("A_int_counter", "foobar").unwrap();
-    static ref A_INT_COUNTER_VEC: IntCounterVec =
-        register_int_counter_vec!("A_int_counter_vec", "foobar", &["a", "b"]).unwrap();
-    static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
-    static ref A_INT_GAUGE_VEC: IntGaugeVec =
-        register_int_gauge_vec!("A_int_gauge_vec", "foobar", &["a", "b"]).unwrap();
-}
+use actix_web_prom::{PrometheusMetricsBuilder};
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
@@ -83,7 +65,7 @@ pub async fn start() -> std::io::Result<()> {
 }
 
 fn get_database_string() -> String {
-    String::from("/databases/mini-x.db")
+    String::from("./databases/mini-x.db")
 }
 
 fn connect_db() -> Connection {
