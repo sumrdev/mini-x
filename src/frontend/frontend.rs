@@ -86,52 +86,30 @@ fn get_user_id(username: &str) -> i32 {
         -1
     }
 
-    /* let conn = connect_db();
-    let query_result = conn.query_row(
-        "SELECT user_id FROM user WHERE username = ?1",
-        params![username],
-        |row| Ok(row.get(0)),
-    );
-    query_result.unwrap_or(Ok(-1)).unwrap_or(-1) */
+}
 
+fn get_user_template(user_id: i32) -> Option<UserTemplate> {
+    let diesel_conn = &mut establish_connection();
+    let user = get_user_by_id(diesel_conn, user_id);
+    if let Some(user) = user {
+        Some(UserTemplate {
+            user_id: user.user_id,
+            username: user.username,
+            email: user.email
+        })
+    } else {
+        None
+    }
 }
 
 fn get_user(user_option: Option<Identity>) -> Option<UserTemplate> {
 
     if let Some(user) = user_option {
-        let diesel_conn = &mut establish_connection();
         let user_id = user.id().unwrap().parse::<i32>().unwrap();
-        let user = get_user_by_id(diesel_conn, user_id);
-        if let Some(user) = user {
-            return Some(UserTemplate {
-                user_id: user.user_id,
-                username: user.username,
-                email: user.email
-            });
-        }
-        
-        /* let conn = connect_db();
-        let user_id = user.id().unwrap();
-        
-        match conn.query_row(
-            "select * from user where user_id = ?",
-            params![user_id],
-            |row| {
-                Ok(Some(UserTemplate {
-                    user_id: row.get(0)?,
-                    username: row.get(1)?,
-                    email: row.get(2)?,
-                }))
-            },
-        ) {
-            Ok(user) => return user,
-            Err(_) => {
-                user.logout(); // Call logout if no user is found
-                return None;
-            }
-        } */
+        get_user_template(user_id)
+    } else {
+        None
     }
-    None
 }
 
 fn gravatar_url(email: &str) -> String {
@@ -203,38 +181,22 @@ async fn public_timeline(
     user: Option<Identity>,
 ) -> impl Responder {
     let user = get_user(user);
-    let conn = connect_db();
-    let prepared_statement = conn.prepare(
-        "select message.*, user.* from message, user
-    where message.flagged = 0 and message.author_id = user.user_id
-    order by message.pub_date desc limit 32",
-    );
-    let mut stmt = prepared_statement.unwrap();
-    let query_result = stmt.query_map([], |row| {
-        Ok(Messages {
-            text: row.get(2)?,
-            gravatar_url: gravatar_url(&row.get::<_, String>(7)?),
-            username: row.get(6)?,
-            pub_date: {
-                let date_str: String = row.get(3)?;
-                chrono::DateTime::parse_from_rfc3339(&date_str)
-                    .unwrap()
-                    .to_utc()
-            },
-        })
-    });
+    let diesel_conn = &mut establish_connection();
+    let messages = get_public_messages(diesel_conn, 32);
 
-    let messages: Vec<Messages> = query_result
-        .unwrap()
-        .map(|m| {
-            println!("{:?}", m);
-
-            m.unwrap()
-        })
-        .collect();
+    let mut messages_for_template: Vec<Messages> = Vec::new();
+    for (msg, user) in messages {
+        let message = Messages {
+            text: msg.text,
+            username: user.username,
+            gravatar_url: gravatar_url(&user.email),
+            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
+        };
+        messages_for_template.push(message)
+    }
 
     TimelineTemplate {
-        messages,
+        messages: messages_for_template,
         request_endpoint: "/",
         profile_user: None,
         user,
