@@ -2,7 +2,6 @@ pub mod api;
 pub mod frontend;
 pub mod models;
 pub mod schema;
-
 use self::models::*;
 use diesel::sqlite::SqliteConnection;
 use diesel::{prelude::*, Connection as Conn};
@@ -40,10 +39,11 @@ pub fn create_user(
 }
 
 pub fn get_public_messages(conn: &mut SqliteConnection, limit: i32) -> Vec<(Message, User)> {
-    use self::schema::user;
     use self::schema::message;
+    use self::schema::user;
 
-    message::table.inner_join(user::table.on(message::author_id.eq(user::user_id)))
+    message::table
+        .inner_join(user::table.on(message::author_id.eq(user::user_id)))
         .filter(message::flagged.eq(0))
         .order_by(message::pub_date.desc())
         .limit(limit.into())
@@ -79,11 +79,59 @@ pub fn unfollow_user(conn: &mut SqliteConnection, follower_id: i32, followed_id:
 }
 
 pub fn get_user_by_id(conn: &mut SqliteConnection, user_id: i32) -> Option<User> {
-    
-    None
+
 }
 
 pub fn get_user_by_name(conn: &mut SqliteConnection, username: &str) -> Option<User> {
     
-    None
+}
+    
+pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
+    use self::schema::message;
+    use self::schema::user;
+
+    message::table
+        .inner_join(user::table.on(message::author_id.eq(user::user_id)))
+        .filter(message::flagged.eq(0))
+        .filter(user::user_id.eq(id))
+        .order_by(message::pub_date.desc())
+        .limit(limit.into())
+        .select((Message::as_select(), User::as_select()))
+        .load(conn)
+        .expect("Error loading messages and post")
+}
+
+// pub fn get_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
+//     use self::schema::follower;
+//     use self::schema::message;
+//     use self::schema::user;
+
+//     message::table
+//         .inner_join(user::table.on(message::author_id.eq(user::user_id)))
+//             .filter(
+//                 message::flagged.eq(0)
+//                 .and(
+//                     user::user_id.eq(id)
+//                         .or(
+//                             follower::table
+//                             .filter(
+//                                 follower::whom_id.eq(id))
+//                                 .select(follower::who_id)),
+//             ),
+//         )
+//         .limit(limit.into())
+//         .select((Message::as_select(), User::as_select()))
+//         .order_by(message::pub_date.desc())
+//         .load(conn)
+//         .expect("Error loading messages and post")
+// }
+
+pub fn get_passwd_hash(conn: &mut SqliteConnection, username: &str) -> String {
+    use self::schema::user;
+
+    user::table
+        .filter(user::username.eq(username))
+        .select(user::pw_hash)
+        .first(conn)
+        .expect("Error loading messages and post")
 }
