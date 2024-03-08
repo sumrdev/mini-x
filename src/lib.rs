@@ -52,13 +52,13 @@ pub fn get_public_messages(conn: &mut SqliteConnection, limit: i32) -> Vec<(Mess
         .expect("Error loading messages and post")
 }
 
-pub fn create_msg(conn: &mut SqliteConnection, author_id: &i32, text: &str, pub_date: &i32, flagged: &i32) -> Message {
+pub fn create_msg(conn: &mut SqliteConnection, author_id: &i32, text: &str, pub_date: String, flagged: &i32) -> Message {
     use self::schema::message;
 
     let new_message = NewMessage {
         author_id,
         text,
-        pub_date,
+        pub_date: &pub_date,
         flagged
     };
 

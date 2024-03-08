@@ -43,7 +43,7 @@ pub struct Message {
     pub message_id: i32,
     pub author_id: i32,
     pub text: String,
-    pub pub_date: i32,
+    pub pub_date: String,
     pub flagged: i32,
 }
 
@@ -52,6 +52,6 @@ pub struct Message {
 pub struct NewMessage<'a> {
     pub author_id: &'a i32,
     pub text: &'a str,
-    pub pub_date: &'a i32,
+    pub pub_date: &'a String,
     pub flagged: &'a i32,
 }

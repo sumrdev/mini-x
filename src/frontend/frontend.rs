@@ -8,10 +8,12 @@ use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::http::{header, StatusCode};
 use actix_web::web::{self, Redirect};
 
+use crate::create_msg;
 use crate::create_user;
 use crate::establish_connection;
 use crate::frontend::flash_messages::*;
 use crate::frontend::template_structs::*;
+use crate::get_public_messages;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -351,11 +353,15 @@ async fn add_message(
     session: Session,
 ) -> impl Responder {
     if let Some(user) = user {
-        let _ = connect_db().execute(
+        /* let _ = connect_db().execute(
             "insert into message (author_id, text, pub_date, flagged)
         values (?, ?, ?, 0)",
             params![user.id().unwrap(), msg.text, Utc::now().to_rfc3339()],
-        );
+        ); */
+        let conn = &mut establish_connection();
+        let timestamp = Utc::now().to_rfc3339();
+        let user_id = user.id().unwrap().parse::<i32>().unwrap();
+        let _ = create_msg(conn, &user_id, &msg.text, timestamp, &0);
         add_flash(session, "Your message was recorded");
         return HttpResponse::Found()
             .append_header((header::LOCATION, "/"))

@@ -12,7 +12,7 @@ diesel::table! {
         message_id -> Integer,
         author_id -> Integer,
         text -> Text,
-        pub_date -> Integer,
+        pub_date -> Text,
         flagged -> Integer,
     }
 }
