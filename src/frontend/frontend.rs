@@ -150,29 +150,6 @@ fn gravatar_url(email: &str) -> String {
 
 #[get("/")]
 async fn timeline(flash: Option<FlashMessages>, user: Option<Identity>) -> impl Responder {
-    
-    A_INT_COUNTER.inc();
-    println!("{}",A_INT_COUNTER.get());
-    A_INT_COUNTER.inc_by(10);
-    assert_eq!(A_INT_COUNTER.get(), 11);
-
-    A_INT_COUNTER_VEC.with_label_values(&["a", "b"]).inc_by(5);
-    assert_eq!(A_INT_COUNTER_VEC.with_label_values(&["a", "b"]).get(), 5);
-
-    A_INT_COUNTER_VEC.with_label_values(&["c", "d"]).inc();
-    assert_eq!(A_INT_COUNTER_VEC.with_label_values(&["c", "d"]).get(), 1);
-
-    A_INT_GAUGE.set(5);
-    assert_eq!(A_INT_GAUGE.get(), 5);
-    A_INT_GAUGE.dec();
-    assert_eq!(A_INT_GAUGE.get(), 4);
-    A_INT_GAUGE.add(2);
-    assert_eq!(A_INT_GAUGE.get(), 6);
-
-    A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).set(10);
-    A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).dec();
-    A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).sub(2);
-    assert_eq!(A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).get(), 7);
     if let Some(user) = get_user(user) {
         //let mut messages = get_messages();
         // you need to login on /register to see any page for now
