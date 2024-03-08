@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use actix_files as fs;
 use actix_identity::config::LogoutBehaviour;
 use actix_identity::Identity;
@@ -13,17 +15,45 @@ use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder
 use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
+use prometheus::Encoder;
+use prometheus::TextEncoder;
 use pwhash::bcrypt;
 use rusqlite::{params, Connection, Result};
 use prometheus::Opts;
 use crate::frontend::template_structs::*;
 use crate::frontend::flash_messages::*;
+use prometheus::{IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
+use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
+
+use lazy_static::lazy_static;
+use prometheus::{
+    register_int_counter, register_int_counter_vec, register_int_gauge, register_int_gauge_vec,
+};
+
+lazy_static! {
+    static ref A_INT_COUNTER: IntCounter =
+        register_int_counter!("A_int_counter", "foobar").unwrap();
+    static ref A_INT_COUNTER_VEC: IntCounterVec =
+        register_int_counter_vec!("A_int_counter_vec", "foobar", &["a", "b"]).unwrap();
+    static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
+    static ref A_INT_GAUGE_VEC: IntGaugeVec =
+        register_int_gauge_vec!("A_int_gauge_vec", "foobar", &["a", "b"]).unwrap();
+}
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
     if !std::fs::metadata(get_database_string()).is_ok() {
         let _ = init_db();
     }
+    
+    let mut labels = HashMap::new();
+    labels.insert("label1".to_string(), "value1".to_string());
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .const_labels(labels)
+        .build()
+        .unwrap();
+
     HttpServer::new(move || {
         App::new()
             .wrap(IdentityMiddleware::builder().logout_behaviour(LogoutBehaviour::DeleteIdentityKeys).build())
@@ -34,6 +64,7 @@ pub async fn start() -> std::io::Result<()> {
                     .cookie_http_only(false)
                     .build(),
             )
+            .wrap(prometheus.clone())
             .service(register)
             .service(post_register)
             .service(timeline)
@@ -119,6 +150,29 @@ fn gravatar_url(email: &str) -> String {
 
 #[get("/")]
 async fn timeline(flash: Option<FlashMessages>, user: Option<Identity>) -> impl Responder {
+    
+    A_INT_COUNTER.inc();
+    println!("{}",A_INT_COUNTER.get());
+    A_INT_COUNTER.inc_by(10);
+    assert_eq!(A_INT_COUNTER.get(), 11);
+
+    A_INT_COUNTER_VEC.with_label_values(&["a", "b"]).inc_by(5);
+    assert_eq!(A_INT_COUNTER_VEC.with_label_values(&["a", "b"]).get(), 5);
+
+    A_INT_COUNTER_VEC.with_label_values(&["c", "d"]).inc();
+    assert_eq!(A_INT_COUNTER_VEC.with_label_values(&["c", "d"]).get(), 1);
+
+    A_INT_GAUGE.set(5);
+    assert_eq!(A_INT_GAUGE.get(), 5);
+    A_INT_GAUGE.dec();
+    assert_eq!(A_INT_GAUGE.get(), 4);
+    A_INT_GAUGE.add(2);
+    assert_eq!(A_INT_GAUGE.get(), 6);
+
+    A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).set(10);
+    A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).dec();
+    A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).sub(2);
+    assert_eq!(A_INT_GAUGE_VEC.with_label_values(&["a", "b"]).get(), 7);
     if let Some(user) = get_user(user) {
         //let mut messages = get_messages();
         // you need to login on /register to see any page for now
