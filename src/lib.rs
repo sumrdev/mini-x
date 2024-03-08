@@ -79,11 +79,25 @@ pub fn unfollow_user(conn: &mut SqliteConnection, follower_id: i32, followed_id:
 }
 
 pub fn get_user_by_id(conn: &mut SqliteConnection, user_id: i32) -> Option<User> {
+    use self::schema::user;
 
+    user::table
+        .find(user_id)
+        .select(User::as_select())
+        .first(conn)
+        .optional()
+        .expect("Error fetching user by id")
 }
 
 pub fn get_user_by_name(conn: &mut SqliteConnection, username: &str) -> Option<User> {
-    
+    use self::schema::user;
+
+    user::table
+        .filter(user::username.eq(username))
+        .select(User::as_select())
+        .first(conn)
+        .optional()
+        .expect("Error fetching user by name")
 }
     
 pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
