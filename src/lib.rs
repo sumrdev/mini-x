@@ -52,7 +52,21 @@ pub fn get_public_messages(conn: &mut SqliteConnection, limit: i32) -> Vec<(Mess
         .expect("Error loading messages and post")
 }
 
-pub fn create_msg(conn: &mut SqliteConnection, author_id: i32, text: String, pub_date: String) {
+pub fn create_msg(conn: &mut SqliteConnection, author_id: &i32, text: &str, pub_date: &i32, flagged: &i32) -> Message {
+    use self::schema::message;
+
+    let new_message = NewMessage {
+        author_id,
+        text,
+        pub_date,
+        flagged
+    };
+
+    diesel::insert_into(message::table)
+        .values(&new_message)
+        .returning(Message::as_select())
+        .get_result(conn)
+        .expect("Error creating new message")
 
 }
 
