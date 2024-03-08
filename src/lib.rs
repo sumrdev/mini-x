@@ -51,3 +51,25 @@ pub fn get_public_messages(conn: &mut SqliteConnection, limit: i32) -> Vec<(Mess
         .load(conn)
         .expect("Error loading messages and post")
 }
+
+pub fn create_msg(conn: &mut SqliteConnection, author_id: i32, text: String, pub_date: String) {
+
+}
+
+pub fn follow_user(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
+    
+}
+
+pub fn unfollow_user(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
+    
+}
+
+pub fn get_user_by_id(conn: &mut SqliteConnection, user_id: i32) -> Option<User> {
+    
+    None
+}
+
+pub fn get_user_by_name(conn: &mut SqliteConnection, username: &str) -> Option<User> {
+    
+    None
+}
