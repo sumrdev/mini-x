@@ -75,7 +75,9 @@ jobs:
           -o StrictHostKeyChecking=no 
           ./docker-compose.yml 
           $SSH_USER@$SSH_HOST:/vagrant/docker-compose.yml
-          
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
 
       - name: Deploy to server
         run: >
