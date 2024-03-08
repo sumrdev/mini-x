@@ -2,6 +2,8 @@ pub mod api;
 pub mod frontend;
 pub mod models;
 pub mod schema;
+use crate::schema::follower::{who_id, whom_id};
+
 use self::models::*;
 use diesel::sqlite::SqliteConnection;
 use diesel::{prelude::*, Connection as Conn};
@@ -136,19 +138,16 @@ pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Ve
 //     use self::schema::message;
 //     use self::schema::user;
 
+//     let subquery = follower::who_id.eq(id);
+
 //     message::table
 //         .inner_join(user::table.on(message::author_id.eq(user::user_id)))
-//             .filter(
-//                 message::flagged.eq(0)
-//                 .and(
-//                     user::user_id.eq(id)
-//                         .or(
-//                             follower::table
-//                             .filter(
-//                                 follower::whom_id.eq(id))
-//                                 .select(follower::who_id)),
-//             ),
-//         )
+//             .filter(message::flagged.eq(0)).filter(
+//                 user::user_id.eq(id)
+//                 .or(
+//                     subquery
+//          ))
+
 //         .limit(limit.into())
 //         .select((Message::as_select(), User::as_select()))
 //         .order_by(message::pub_date.desc())
@@ -165,4 +164,16 @@ pub fn get_passwd_hash(conn: &mut SqliteConnection, username: &str) -> Option<St
         .first(conn)
         .optional()
         .expect("Error loading messages and post")
+}
+
+pub fn is_following(conn: &mut SqliteConnection, followed_id: i32, follower_id: i32) -> bool {
+    use self::schema::follower;
+
+    let result: Result<Option<i32>, diesel::result::Error> = follower::table
+        .find((follower_id, followed_id))
+        .select(follower::who_id)
+        .first(conn)
+        .optional();
+
+    result.unwrap().is_some()
 }

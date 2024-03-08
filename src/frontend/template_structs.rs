@@ -2,6 +2,8 @@ use askama_actix::Template;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
+use crate::User;
+
 #[derive(Clone)]
 pub struct UserTemplate {
     pub user_id: i32,
@@ -23,7 +25,7 @@ pub struct TimelineTemplate<'a> {
     pub messages: Vec<Messages>, 
     pub user: Option<UserTemplate>,
     pub request_endpoint: &'a str, 
-    pub profile_user: Option<UserTemplate>,
+    pub profile_user: Option<User>,
     pub followed: Option<bool>, 
     pub flashes: Vec<String>,
     pub title: String

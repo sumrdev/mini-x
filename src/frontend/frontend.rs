@@ -19,6 +19,10 @@ use crate::get_public_messages;
 use crate::get_user_by_id;
 use crate::get_user_by_name;
 use crate::unfollow;
+use crate::get_user_timeline;
+use crate::is_following;
+use crate::Message;
+use crate::User;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -126,6 +130,20 @@ fn gravatar_url(email: &str) -> String {
     )
 }
 
+fn format_messages (messages: Vec<(Message, User)>) -> Vec<Messages>{
+    let mut messages_for_template: Vec<Messages> = Vec::new();
+    for (msg, user) in messages {
+        let message = Messages {
+            text: msg.text,
+            username: user.username,
+            gravatar_url: gravatar_url(&user.email),
+            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
+        };
+        messages_for_template.push(message)
+    }
+    messages_for_template
+}
+
 #[get("/")]
 async fn timeline(flash: Option<FlashMessages>, user: Option<Identity>) -> impl Responder {
     if let Some(user) = get_user(user) {
@@ -186,17 +204,7 @@ async fn public_timeline(
     let user = get_user(user);
     let diesel_conn = &mut establish_connection();
     let messages = get_public_messages(diesel_conn, 32);
-
-    let mut messages_for_template: Vec<Messages> = Vec::new();
-    for (msg, user) in messages {
-        let message = Messages {
-            text: msg.text,
-            username: user.username,
-            gravatar_url: gravatar_url(&user.email),
-            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
-        };
-        messages_for_template.push(message)
-    }
+    let messages_for_template = format_messages(messages);
 
     TimelineTemplate {
         messages: messages_for_template,
@@ -216,55 +224,16 @@ async fn user_timeline(
     flash_messages: Option<FlashMessages>,
 ) -> impl Responder {
     let username = path.into_inner();
-    let conn = connect_db();
-    let profile_user = conn.query_row(
-        "select * from user where username = ?",
-        params![username],
-        |row| {
-            Ok(UserTemplate {
-                user_id: row.get(0)?,
-                username: row.get(1)?,
-                email: row.get(2)?,
-            })
-        },
-    );
-    if let Ok(profile_user) = profile_user {
+    let mut diesel_conn = &mut establish_connection();
+    let is_user = get_user_by_name(diesel_conn, &username);
+    if is_user.is_some(){
+        let profile_user = is_user.unwrap();
         let mut followed = false;
         let user = get_user(user);
         if let Some(user) = user.clone() {
-            followed = conn
-                .query_row(
-                    "select 1 from follower where follower.who_id = ? and follower.whom_id = ?",
-                    params![user.user_id, profile_user.user_id],
-                    |_| Ok(()),
-                )
-                .is_ok();
+            followed = is_following(diesel_conn, profile_user.user_id, user.user_id)
         }
-        let conn = connect_db();
-        let mut stmt = conn
-            .prepare(
-                "
-            select message.*, user.* from message, user where
-            user.user_id = message.author_id and user.user_id = ?
-            order by message.pub_date desc limit ?",
-            )
-            .unwrap();
-        let query_result = stmt.query_map([profile_user.user_id, 30], |row| {
-            Ok(Messages {
-                text: row.get(2)?,
-                gravatar_url: gravatar_url(&row.get::<_, String>(7)?),
-                username: row.get(6)?,
-                pub_date: {
-                    let date_str: String = row.get(3)?;
-                    chrono::DateTime::parse_from_rfc3339(&date_str)
-                        .unwrap()
-                        .to_utc()
-                },
-            })
-        });
-
-        let messages: Vec<Messages> = query_result.unwrap().map(|m| m.unwrap()).collect();
-
+        let messages = format_messages(get_user_timeline(&mut diesel_conn, profile_user.user_id, 30));
         let rendered = TimelineTemplate {
             messages,
             request_endpoint: "user_timeline",
@@ -339,11 +308,6 @@ async fn add_message(
     session: Session,
 ) -> impl Responder {
     if let Some(user) = user {
-        /* let _ = connect_db().execute(
-            "insert into message (author_id, text, pub_date, flagged)
-        values (?, ?, ?, 0)",
-            params![user.id().unwrap(), msg.text, Utc::now().to_rfc3339()],
-        ); */
         let conn = &mut establish_connection();
         let timestamp = Utc::now().to_rfc3339();
         let user_id = user.id().unwrap().parse::<i32>().unwrap();
