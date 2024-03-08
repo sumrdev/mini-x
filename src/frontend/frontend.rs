@@ -14,6 +14,8 @@ use crate::establish_connection;
 use crate::frontend::flash_messages::*;
 use crate::frontend::template_structs::*;
 use crate::get_public_messages;
+use crate::get_user_by_id;
+use crate::get_user_by_name;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -76,20 +78,41 @@ fn init_db() -> rusqlite::Result<()> {
 }
 
 fn get_user_id(username: &str) -> i32 {
-    let conn = connect_db();
+    let diesel_conn = &mut establish_connection();
+    let user = get_user_by_name(diesel_conn, username);
+    if let Some(user) = user {
+        return user.user_id;
+    } else {
+        -1
+    }
+
+    /* let conn = connect_db();
     let query_result = conn.query_row(
         "SELECT user_id FROM user WHERE username = ?1",
         params![username],
         |row| Ok(row.get(0)),
     );
-    query_result.unwrap_or(Ok(-1)).unwrap_or(-1)
+    query_result.unwrap_or(Ok(-1)).unwrap_or(-1) */
+
 }
 
 fn get_user(user_option: Option<Identity>) -> Option<UserTemplate> {
-    if let Some(user) = user_option {
-        let conn = connect_db();
-        let user_id = user.id().unwrap();
 
+    if let Some(user) = user_option {
+        let diesel_conn = &mut establish_connection();
+        let user_id = user.id().unwrap().parse::<i32>().unwrap();
+        let user = get_user_by_id(diesel_conn, user_id);
+        if let Some(user) = user {
+            return Some(UserTemplate {
+                user_id: user.user_id,
+                username: user.username,
+                email: user.email
+            });
+        }
+        
+        /* let conn = connect_db();
+        let user_id = user.id().unwrap();
+        
         match conn.query_row(
             "select * from user where user_id = ?",
             params![user_id],
@@ -106,7 +129,7 @@ fn get_user(user_option: Option<Identity>) -> Option<UserTemplate> {
                 user.logout(); // Call logout if no user is found
                 return None;
             }
-        }
+        } */
     }
     None
 }
