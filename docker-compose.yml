@@ -14,14 +14,5 @@ services:
       - ./databases:/databases/
     ports:
       - "5000:5000"
-
-  api:
-    image: minixgroupd/miniximage:latest
-    container_name: mini-x-api
-    networks:
-      - main
-    volumes:
-      - ./databases:/databases/
-    ports:
       - "5001:5001"
-    command: ./api
+

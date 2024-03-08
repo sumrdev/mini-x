@@ -1,20 +1,26 @@
 
-mod api_structs;
-use api_structs::structs::*;
 use std::sync::Mutex;
 use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
-use chrono::Utc;
+use chrono::{DateTime, Local, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use pwhash::bcrypt;
+use crate::api::api_structs::*;
+use log::LevelFilter;
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+pub async fn start() -> std::io::Result<()> {
     let latest = web::Data::new(LatestAction {latest: Mutex::new(-1)});
     if !std::fs::metadata(get_database_string()).is_ok() {
         let _ = init_db();
     }
+    let local: DateTime<Local> = Local::now();
+
+    // Format the date as a string in the desired format
+    let date = local.format("%m_%e_%y-%H:%M:%S").to_string();
+
+    let _ = simple_logging::log_to_file(format!("{}.log", date), LevelFilter::Warn);
     HttpServer::new(move || {
         App::new()
             .app_data(latest.clone())
@@ -33,7 +39,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn get_database_string() -> String {
-    String::from("/tmp/mini-x_api.db")
+    String::from("/databases/mini-x.db")
 }
 
 fn connect_db() -> Connection {
@@ -41,10 +47,10 @@ fn connect_db() -> Connection {
 }
 
 fn init_db() -> rusqlite::Result<()> {
-    let schema_sql = std::fs::read_to_string("schema.sql").unwrap();
+    const SCHEMA_SQL: &str = include_str!("../schema.sql");
     let conn = connect_db();
 
-    conn.execute_batch(&schema_sql)?;
+    conn.execute_batch(&SCHEMA_SQL)?;
     Ok(())
 }
 
@@ -93,7 +99,6 @@ async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>,
         params![info.username, info.email, hash ],
     );
 
-    
     if let Some(err_msg) = error {
         let reg_err = RegisterError {status: 400, error_msg: err_msg.to_string()};
         HttpResponse::BadRequest().json(reg_err)
@@ -173,7 +178,6 @@ async fn messages_per_user_post(path: web::Path<(String,)>, msg: web::Json<Messa
         HttpResponse::NotFound().json("")
     }
 }
-
 
 #[get("fllws/{username}")]
 async fn follows_get(path: web::Path<(String,)>, amount: web::Query<MessageAmount>, query: web::Query<Latest>, latest_action: web::Data<LatestAction>) -> impl Responder {
