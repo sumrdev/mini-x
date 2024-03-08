@@ -3,10 +3,11 @@ use std::sync::Mutex;
 use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
-use chrono::Utc;
+use chrono::{DateTime, Local, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use pwhash::bcrypt;
 use crate::api::api_structs::*;
+use log::LevelFilter;
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
@@ -14,6 +15,12 @@ pub async fn start() -> std::io::Result<()> {
     if !std::fs::metadata(get_database_string()).is_ok() {
         let _ = init_db();
     }
+    let local: DateTime<Local> = Local::now();
+
+    // Format the date as a string in the desired format
+    let date = local.format("%m_%e_%y-%H:%M:%S").to_string();
+
+    let _ = simple_logging::log_to_file(format!("{}.log", date), LevelFilter::Warn);
     HttpServer::new(move || {
         App::new()
             .app_data(latest.clone())
