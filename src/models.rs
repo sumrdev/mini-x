@@ -1,5 +1,5 @@
-use diesel::prelude::*;
 use crate::schema::{follower, message};
+use diesel::prelude::*;
 
 use super::schema::user;
 
