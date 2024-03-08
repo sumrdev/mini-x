@@ -11,6 +11,7 @@ use actix_web::web::{self, Redirect};
 use crate::create_msg;
 use crate::create_user;
 use crate::establish_connection;
+use crate::follow;
 use crate::frontend::flash_messages::*;
 use crate::frontend::template_structs::*;
 use crate::get_public_messages;
@@ -289,11 +290,9 @@ async fn follow_user(
     if let Some(_current_user) = user {
         let _target_username = path.clone();
         let _target_id = get_user_id(&_target_username);
-        let _conn = connect_db();
-        let sql = "insert into follower (who_id, whom_id) values (?, ?)";
-        let _ = _conn.execute(sql, params![_current_user.id().unwrap(), _target_id]);
-        let mut message = String::from("You are now following ");
-        message.push_str(&_target_username);
+        let conn = &mut establish_connection();
+        let _ = follow(conn, _current_user.id().unwrap().parse::<i32>().unwrap(),_target_id);
+        let message = String::from("You are now following ");
         add_flash(session, message.as_str());
     } else {
         return HttpResponse::Found()

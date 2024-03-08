@@ -70,12 +70,28 @@ pub fn create_msg(conn: &mut SqliteConnection, author_id: &i32, text: &str, pub_
 
 }
 
-pub fn follow_user(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
+pub fn follow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
+    use self::schema::follower;
+
+    let new_follower = NewFollower {
+        who_id: &follower_id,
+        whom_id: &followed_id,
+    };
     
+    diesel::insert_into(follower::table)
+        .values(&new_follower)
+        .returning(Follower::as_select())
+        .get_result(conn)
+        .expect("Error creating new message");
 }
 
 pub fn unfollow_user(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
-    
+    use self::schema::follower;
+    let _ = diesel::delete(
+        follower::table.filter(
+            follower::who_id.eq(follower_id)
+            .and(follower::whom_id.eq(followed_id))))
+            .execute(conn);
 }
 
 pub fn get_user_by_id(conn: &mut SqliteConnection, user_id: i32) -> Option<User> {
@@ -99,7 +115,7 @@ pub fn get_user_by_name(conn: &mut SqliteConnection, username: &str) -> Option<U
         .optional()
         .expect("Error fetching user by name")
 }
-    
+
 pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
     use self::schema::message;
     use self::schema::user;
