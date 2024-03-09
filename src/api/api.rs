@@ -1,5 +1,5 @@
 use crate::api::api_structs::*;
-use crate::{create_user, establish_connection};
+use crate::{create_msg, create_user, establish_connection, get_public_messages, get_timeline, get_user_by_name};
 use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
@@ -57,16 +57,8 @@ fn init_db() -> rusqlite::Result<()> {
 }
 
 fn get_user_id(username: &str) -> Option<i32> {
-    let conn = connect_db();
-    let res = conn
-        .query_row(
-            "SELECT user_id FROM user WHERE username = ?1",
-            params![username],
-            |row| row.get(0),
-        )
-        .optional()
-        .unwrap();
-    res
+    let conn = &mut establish_connection();
+    get_user_by_name(conn, username).and_then(|user| Some(user.user_id))
 }
 
 fn update_latest(query: web::Query<Latest>, latest_action: web::Data<LatestAction>) {
@@ -107,12 +99,6 @@ async fn post_register(
     let conn = &mut establish_connection();
     let _ = create_user(conn, &info.username, &info.email, &hash);
 
-    /* let _ = connect_db().execute(
-        "insert into user (
-            username, email, pw_hash) values (?, ?, ?)",
-        params![info.username, info.email, hash ],
-    ); */
-
     if let Some(err_msg) = error {
         let reg_err = RegisterError {
             status: 400,
@@ -131,34 +117,14 @@ async fn messages_api(
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-
-    let conn = connect_db();
-    let mut stmt = conn
-        .prepare(
-            "
-        SELECT message.*, user.* FROM message, user
-        WHERE message.flagged = 0 AND message.author_id = user.user_id
-        ORDER BY message.pub_date DESC LIMIT ?",
-        )
-        .unwrap();
-    let result = stmt.query_map([amount.no], |row| {
-        Ok(Message {
-            content: row.get(2)?,
-            user: row.get(6)?,
-            pub_date: {
-                let date_str: String = row.get(3)?;
-                chrono::DateTime::parse_from_rfc3339(&date_str)
-                    .unwrap()
-                    .to_utc()
-            },
-        })
-    });
-
-    let messages: Vec<Message> = result
-        .unwrap()
-        .skip_while(|m| m.is_err())
-        .map(|m| m.unwrap())
-        .collect();
+    let conn = &mut establish_connection();
+    let messages: Vec<Message> = get_public_messages(conn, amount.no)
+        .into_iter()
+        .map(|(msg, user)| Message {
+            content: msg.text,
+            user: user.username,
+            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
+        }).collect();
 
     HttpResponse::Ok().json(messages)
 }
@@ -173,34 +139,15 @@ async fn messages_per_user_get(
     update_latest(query, latest_action);
     let username = &path.0;
     if let Some(user_id) = get_user_id(username) {
-        let conn = connect_db();
-        let mut stmt = conn
-            .prepare(
-                "
-            SELECT message.*, user.* FROM message, user
-            WHERE message.flagged = 0 AND
-            user.user_id = message.author_id AND user.user_id = ?
-            ORDER BY message.pub_date DESC LIMIT ?",
-            )
-            .unwrap();
-        let result = stmt.query_map([user_id, amount.no], |row| {
-            Ok(Message {
-                content: row.get(2)?,
-                user: row.get(6)?,
-                pub_date: {
-                    let date_str: String = row.get(3)?;
-                    chrono::DateTime::parse_from_rfc3339(&date_str)
-                        .unwrap()
-                        .to_utc()
-                },
-            })
-        });
-
-        let messages: Vec<Message> = result
-            .unwrap()
-            .skip_while(|m| m.is_err())
-            .map(|m| m.unwrap())
-            .collect();
+        let conn = &mut establish_connection();
+        let messages: Vec<Message> = get_timeline(conn, user_id, amount.no)
+            .into_iter()
+            .map(|(msg, user)| Message {
+                content: msg.text,
+                user: user.username,
+                pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
+            }).collect();
+        
 
         HttpResponse::Ok().json(messages)
     } else {
@@ -218,8 +165,8 @@ async fn messages_per_user_post(
     update_latest(query, latest_action);
     let username = &path.0;
     if let Some(user_id) = get_user_id(username) {
-        let stmt = "insert into message (author_id, text, pub_date, flagged) values (?, ?, ?, 0)";
-        let _ = connect_db().execute(stmt, params![user_id, msg.content, Utc::now().to_rfc3339()]);
+        let conn = &mut establish_connection();
+        let _ = create_msg(conn, &user_id, &msg.content, Utc::now().to_rfc3339(), &0);
         HttpResponse::NoContent().json("")
     } else {
         HttpResponse::NotFound().json("")
