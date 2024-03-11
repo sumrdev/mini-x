@@ -1,12 +1,12 @@
 use crate::api::api_structs::*;
-use crate::{create_msg, create_user, establish_connection, get_public_messages, get_timeline, get_user_by_name};
+use crate::{create_msg, create_user, establish_connection, follow, get_followers, get_public_messages, get_timeline, get_user_by_name, unfollow};
 use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 use chrono::{DateTime, Local, Utc};
+use diesel::connection::SimpleConnection;
 use log::LevelFilter;
 use pwhash::bcrypt;
-use rusqlite::{params, Connection, OptionalExtension};
 use std::sync::Mutex;
 
 #[actix_web::main]
@@ -44,16 +44,10 @@ fn get_database_string() -> String {
     String::from("/tmp/mini-x.db")
 }
 
-fn connect_db() -> Connection {
-    Connection::open(get_database_string()).unwrap()
-}
-
-fn init_db() -> rusqlite::Result<()> {
+fn init_db(){
     const SCHEMA_SQL: &str = include_str!("../schema.sql");
-    let conn = connect_db();
-
-    conn.execute_batch(&SCHEMA_SQL)?;
-    Ok(())
+    let mut conn = establish_connection();
+    let _ = conn.batch_execute(&SCHEMA_SQL);
 }
 
 fn get_user_id(username: &str) -> Option<i32> {
@@ -82,7 +76,8 @@ async fn post_register(
 
     let user_exists = get_user_id(&info.username);
 
-    let error = if info.username.len() == 0 {
+    let error = 
+    if info.username.len() == 0 {
         Some(String::from("You have to enter a username"))
     } else if info.email.len() == 0 {
         Some(String::from("You have to enter a valid email address"))
@@ -94,11 +89,6 @@ async fn post_register(
         None
     };
 
-    let hash = bcrypt::hash(info.pwd.clone()).unwrap();
-
-    let conn = &mut establish_connection();
-    let _ = create_user(conn, &info.username, &info.email, &hash);
-
     if let Some(err_msg) = error {
         let reg_err = RegisterError {
             status: 400,
@@ -106,6 +96,10 @@ async fn post_register(
         };
         HttpResponse::BadRequest().json(reg_err)
     } else {
+        let hash = bcrypt::hash(info.pwd.clone()).unwrap();
+
+        let conn = &mut establish_connection();
+        let _ = create_user(conn, &info.username, &info.email, &hash);
         HttpResponse::NoContent().json(String::from(""))
     }
 }
@@ -183,22 +177,12 @@ async fn follows_get(
     update_latest(query, latest_action);
     let username = &path.0;
     if let Some(user_id) = get_user_id(username) {
-        let conn = connect_db();
-        let mut stmt = conn
-            .prepare(
-                "
-            SELECT user.username FROM user
-            INNER JOIN follower ON follower.whom_id=user.user_id
-            WHERE follower.who_id=?
-            LIMIT ?",
-            )
-            .unwrap();
-        let mut rows = stmt.query([user_id, amount.no]).unwrap();
-
-        let mut followers: Vec<String> = Vec::new();
-        while let Some(row) = rows.next().unwrap() {
-            followers.push(row.get(0).unwrap());
-        }
+        let conn = &mut establish_connection();
+        let followers = get_followers(conn, user_id, amount.no);
+        let followers = followers
+            .into_iter()
+            .map(|user| user.username)
+            .collect();
 
         HttpResponse::Ok().json(Follows { follows: followers })
     } else {
@@ -219,22 +203,14 @@ async fn follows_post(
         let follow_param = follow_param.into_inner();
         if let Some(follow_username) = follow_param.follow {
             if let Some(follow_user_id) = get_user_id(&follow_username) {
-                let _ = connect_db()
-                    .execute(
-                        "INSERT INTO follower (who_id, whom_id) VALUES (?, ?)",
-                        [user_id, follow_user_id],
-                    )
-                    .unwrap();
+                let conn = &mut establish_connection();
+                let _ = follow(conn, user_id, follow_user_id);
                 return HttpResponse::NoContent();
             }
         } else if let Some(unfollow_username) = follow_param.unfollow {
             if let Some(unfollow_user_id) = get_user_id(&unfollow_username) {
-                let _ = connect_db()
-                    .execute(
-                        "DELETE FROM follower WHERE who_id=? and WHOM_ID=?",
-                        [user_id, unfollow_user_id],
-                    )
-                    .unwrap();
+                let conn = &mut establish_connection();
+                let _ = unfollow(conn, user_id, unfollow_user_id);
                 return HttpResponse::NoContent();
             }
         }

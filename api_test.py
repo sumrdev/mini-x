@@ -27,8 +27,8 @@ def init_db():
 
 
 # Empty the database and initialize the schema again
-Path(DATABASE).unlink()
-init_db()
+#Path(DATABASE).unlink()
+#init_db()
 
 
 def test_latest():

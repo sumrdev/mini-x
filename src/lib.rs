@@ -95,6 +95,19 @@ pub fn unfollow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32)
             .execute(conn);
 }
 
+pub fn get_followers(conn: &mut SqliteConnection, user_id: i32, limit: i32) -> Vec<User> {
+    use self::schema::follower;
+    use self::schema::user;
+
+    user::table
+        .inner_join(follower::table.on(user::user_id.eq(follower::whom_id)))
+        .filter(follower::who_id.eq(user_id))
+        .select(User::as_select())
+        .limit(limit.into())
+        .load(conn)
+        .expect("Couldn't get followers")
+}
+
 pub fn get_user_by_id(conn: &mut SqliteConnection, user_id: i32) -> Option<User> {
     use self::schema::user;
 
