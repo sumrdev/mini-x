@@ -25,7 +25,7 @@ pub fn create_user(
     email: &str,
     pw_hash: &str,
 ) -> User {
-    use self::schema::user;
+    use self::schema::users;
 
     let new_post = NewUser {
         username,
@@ -41,8 +41,8 @@ pub fn create_user(
 }
 
 pub fn get_public_messages(conn: &mut PgConnection, limit: i32) -> Vec<(Message, User)> {
-    use self::schema::message;
-    use self::schema::user;
+    use self::schema::messages;
+    use self::schema::users;
 
     message::table
         .inner_join(user::table.on(message::author_id.eq(user::user_id)))
