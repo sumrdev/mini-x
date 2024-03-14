@@ -13,8 +13,9 @@ diesel::table! {
         author_id -> Int4,
         #[max_length = 255]
         text -> Varchar,
-        pub_date -> Nullable<Timestamp>,
-        flagged -> Nullable<Int4>,
+        #[max_length = 255]
+        pub_date -> Varchar,
+        flagged -> Int4,
     }
 }
 

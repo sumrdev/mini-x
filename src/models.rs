@@ -1,5 +1,5 @@
 use crate::schema::{followers, messages};
-use diesel::prelude::*;
+use diesel::{prelude::*, sql_types::Timestamp};
 
 use super::schema::users;
 

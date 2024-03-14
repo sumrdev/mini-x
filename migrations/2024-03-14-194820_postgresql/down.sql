@@ -1,3 +1,3 @@
 DROP TABLE messages;
-DROP TABLE users;
 DROP TABLE followers;
+DROP TABLE users;

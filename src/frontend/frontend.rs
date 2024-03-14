@@ -23,8 +23,8 @@ use crate::get_user_by_name;
 use crate::unfollow;
 use crate::get_user_timeline;
 use crate::is_following;
-use crate::Message;
-use crate::User;
+use crate::Messages;
+use crate::Users;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -123,10 +123,10 @@ fn gravatar_url(email: &str) -> String {
     )
 }
 
-fn format_messages (messages: Vec<(Message, User)>) -> Vec<Messages>{
-    let mut messages_for_template: Vec<Messages> = Vec::new();
+fn format_messages (messages: Vec<(Messages, Users)>) -> Vec<MessageTemplate>{
+    let mut messages_for_template: Vec<MessageTemplate> = Vec::new();
     for (msg, user) in messages {
-        let message = Messages {
+        let message = MessageTemplate {
             text: msg.text,
             username: user.username,
             gravatar_url: gravatar_url(&user.email),
