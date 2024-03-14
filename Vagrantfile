@@ -10,13 +10,12 @@
 
 Vagrant.configure("2") do |config|
   config.env.enable
+  config.vm.synced_folder '.', '/vagrant', disabled: true
   config.vm.network "forwarded_port", guest: 5001, host: 5001
   config.vm.network "forwarded_port", guest: 5000, host: 5000
-  config.vm.synced_folder ".", "/vagrant", type: "rsync",
-    rsync__auto: true,
-    rsync__exclude: ['target/','__pycache__/','legacy_python/']
-  
+
   config.vm.define "local" do |config|
+    config.vm.provision "file", source: "./docker-compose-monitoring.yml", destination: "/vagrant/docker-compose.yml"
     config.vm.box = "bento/ubuntu-22.04"
     config.vm.provider :libvirt do |domain|
       domain.memory = 2048
@@ -26,6 +25,30 @@ Vagrant.configure("2") do |config|
   # Manually had to patch my digital ocean plugin, by removing the {}
   # https://discuss.hashicorp.com/t/vagrant-digital-ocean-plugin-broken-with-2-3-6/54132
   config.vm.define "droplet" do |config|
+    config.vm.provision "file", source: "./docker-compose.yml", destination: "/vagrant/docker-compose.yml"
+    config.vm.provision "file", source: "./.env", destination: "/vagrant/.env"
+
+    config.vm.provider :digital_ocean do |provider, override|
+      override.ssh.private_key_path = "./ssh-keys/ssh-key"
+      override.vm.box = 'digital_ocean'
+      override.nfs.functional = false
+      override.vm.allowed_synced_folder_types = :rsync
+      provider.token = ENV["DIGITAL_OCEAN_TOKEN"]
+      provider.image = 'ubuntu-22-04-x64'
+      provider.region = 'fra1'
+      provider.size = 's-1vcpu-1gb'
+      provider.backups_enabled = false
+      provider.private_networking = false
+      provider.ipv6 = false
+      provider.monitoring = false
+    end
+  end
+
+  config.vm.define "monitoring" do |config|
+    config.vm.provision "file", source: "./docker-compose-monitoring.yml", destination: "/vagrant/docker-compose.yml"
+    config.vm.provision "file", source: "./prometheus.yaml", destination: "/vagrant/prometheus.yaml"
+    config.vm.provision "file", source: "./.env", destination: "/vagrant/.env"
+    
     config.vm.provider :digital_ocean do |provider, override|
       override.ssh.private_key_path = "./ssh-keys/ssh-key"
       override.vm.box = 'digital_ocean'

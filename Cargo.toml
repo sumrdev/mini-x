@@ -18,6 +18,8 @@ serde = "1.0.196"
 pwhash = "1"
 actix-identity = "0.7.0"
 md-5 = "0.10.6"
+diesel = { version = "2.1.0", features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
+dotenvy = "0.15"
 futures = "0.3.30"
 simple-logging = "2.0.2"
 log = "0.4.21"

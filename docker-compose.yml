@@ -1,10 +1,16 @@
 version: '3.3'
 
+networks:
+ main:
+  name: mini-x-network
+
 services:
   app:
     #build: .
     image: minixgroupd/miniximage:latest
     container_name: mini-x
+    networks:
+      - main
     volumes:
       - ./databases:/databases/
     ports:
