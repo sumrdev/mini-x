@@ -4,7 +4,6 @@ use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 use chrono::{DateTime, Local, Utc};
-use diesel::connection::SimpleConnection;
 use log::LevelFilter;
 use pwhash::bcrypt;
 use std::sync::Mutex;
@@ -14,9 +13,6 @@ pub async fn start() -> std::io::Result<()> {
     let latest = web::Data::new(LatestAction {
         latest: Mutex::new(-1),
     });
-    if !std::fs::metadata(get_database_string()).is_ok() {
-        let _ = init_db();
-    }
     let local: DateTime<Local> = Local::now();
 
     // Format the date as a string in the desired format
@@ -38,16 +34,6 @@ pub async fn start() -> std::io::Result<()> {
     .bind(("0.0.0.0", 5001))?
     .run()
     .await
-}
-
-fn get_database_string() -> String {
-    String::from("/databases/mini-x.db")
-}
-
-fn init_db(){
-    const SCHEMA_SQL: &str = include_str!("../schema.sql");
-    let mut conn = establish_connection();
-    let _ = conn.batch_execute(&SCHEMA_SQL);
 }
 
 fn get_user_id(username: &str) -> Option<i32> {

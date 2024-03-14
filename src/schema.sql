@@ -17,6 +17,6 @@ CREATE TABLE IF NOT EXISTS messages (
   message_id SERIAL PRIMARY KEY,
   author_id INTEGER NOT NULL,
   text VARCHAR(255) NOT NULL,
-  pub_date TIMESTAMP,
+  pub_date VARCHAR(255),
   flagged INTEGER
 );
