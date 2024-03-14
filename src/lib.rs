@@ -3,23 +3,24 @@ pub mod frontend;
 pub mod models;
 pub mod schema;
 
+use std::env;
+
 use self::models::*;
-use diesel::sqlite::SqliteConnection;
+use diesel::pg::PgConnection;
 use diesel::{prelude::*, Connection as Conn};
 use dotenvy::dotenv;
 
-pub fn establish_connection() -> SqliteConnection {
+pub fn establish_connection() -> PgConnection {
     dotenv().ok();
 
     //let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let database_url = "/databases/mini-x.db";
-
-    SqliteConnection::establish(&database_url)
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    PgConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
 pub fn create_user(
-    conn: &mut SqliteConnection,
+    conn: &mut PgConnection,
     username: &str,
     email: &str,
     pw_hash: &str,
@@ -39,7 +40,7 @@ pub fn create_user(
         .expect("Error saving new post")
 }
 
-pub fn get_public_messages(conn: &mut SqliteConnection, limit: i32) -> Vec<(Message, User)> {
+pub fn get_public_messages(conn: &mut PgConnection, limit: i32) -> Vec<(Message, User)> {
     use self::schema::message;
     use self::schema::user;
 
@@ -53,7 +54,7 @@ pub fn get_public_messages(conn: &mut SqliteConnection, limit: i32) -> Vec<(Mess
         .expect("Error loading messages and post")
 }
 
-pub fn create_msg(conn: &mut SqliteConnection, author_id: &i32, text: &str, pub_date: String, flagged: &i32) -> Message {
+pub fn create_msg(conn: &mut PgConnection, author_id: &i32, text: &str, pub_date: String, flagged: &i32) -> Message {
     use self::schema::message;
 
     let new_message = NewMessage {
@@ -71,7 +72,7 @@ pub fn create_msg(conn: &mut SqliteConnection, author_id: &i32, text: &str, pub_
 
 }
 
-pub fn follow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
+pub fn follow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
     use self::schema::follower;
 
     let new_follower = NewFollower {
@@ -86,7 +87,7 @@ pub fn follow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
         .expect("Error creating new message");
 }
 
-pub fn unfollow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32) {
+pub fn unfollow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
     use self::schema::follower;
     let _ = diesel::delete(
         follower::table.filter(
@@ -95,7 +96,7 @@ pub fn unfollow(conn: &mut SqliteConnection, follower_id: i32, followed_id: i32)
             .execute(conn);
 }
 
-pub fn get_followers(conn: &mut SqliteConnection, user_id: i32, limit: i32) -> Vec<User> {
+pub fn get_followers(conn: &mut PgConnection, user_id: i32, limit: i32) -> Vec<User> {
     use self::schema::follower;
     use self::schema::user;
 
@@ -108,7 +109,7 @@ pub fn get_followers(conn: &mut SqliteConnection, user_id: i32, limit: i32) -> V
         .expect("Couldn't get followers")
 }
 
-pub fn get_user_by_id(conn: &mut SqliteConnection, user_id: i32) -> Option<User> {
+pub fn get_user_by_id(conn: &mut PgConnection, user_id: i32) -> Option<User> {
     use self::schema::user;
 
     user::table
@@ -119,7 +120,7 @@ pub fn get_user_by_id(conn: &mut SqliteConnection, user_id: i32) -> Option<User>
         .expect("Error fetching user by id")
 }
 
-pub fn get_user_by_name(conn: &mut SqliteConnection, username: &str) -> Option<User> {
+pub fn get_user_by_name(conn: &mut PgConnection, username: &str) -> Option<User> {
     use self::schema::user;
 
     user::table
@@ -130,7 +131,7 @@ pub fn get_user_by_name(conn: &mut SqliteConnection, username: &str) -> Option<U
         .expect("Error fetching user by name")
 }
 
-pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
+pub fn get_user_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
     use self::schema::message;
     use self::schema::user;
 
@@ -145,7 +146,7 @@ pub fn get_user_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Ve
         .expect("Error loading messages and post")
 }
 
-pub fn get_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
+pub fn get_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Message, User)> {
     use self::schema::follower;
     use self::schema::message;
     use self::schema::user;
@@ -168,7 +169,7 @@ pub fn get_timeline(conn: &mut SqliteConnection, id: i32, limit: i32) -> Vec<(Me
         .expect("Error loading messages and post")
 }
 
-pub fn get_passwd_hash(conn: &mut SqliteConnection, username: &str) -> Option<String> {
+pub fn get_passwd_hash(conn: &mut PgConnection, username: &str) -> Option<String> {
     use self::schema::user;
 
     user::table
@@ -179,7 +180,7 @@ pub fn get_passwd_hash(conn: &mut SqliteConnection, username: &str) -> Option<St
         .expect("Error loading messages and post")
 }
 
-pub fn is_following(conn: &mut SqliteConnection, followed_id: i32, follower_id: i32) -> bool {
+pub fn is_following(conn: &mut PgConnection, followed_id: i32, follower_id: i32) -> bool {
     use self::schema::follower;
 
     let result: Result<Option<i32>, diesel::result::Error> = follower::table
