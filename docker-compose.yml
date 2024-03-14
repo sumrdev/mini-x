@@ -2,10 +2,11 @@ version: '3.3'
 
 services:
   app:
+    #build: .
     image: minixgroupd/miniximage:latest
     container_name: mini-x
     volumes:
-      - ./databases:/usr/src/mini-x/databases/
+      - ./databases:/databases/
     ports:
       - "5000:5000"
       - "5001:5001"
@@ -27,4 +28,4 @@ services:
       - '3000:3000'
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: $GRAFANA_ADMIN_PASSWORD
+      GF_SECURITY_ADMIN_PASSWORD: admin
