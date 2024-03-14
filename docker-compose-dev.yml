@@ -6,7 +6,7 @@ networks:
 
 services:
   app:
-    image: minixgroupd/miniximage:latest
+    build: .
     container_name: mini-x
     networks:
       - main
