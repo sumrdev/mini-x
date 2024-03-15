@@ -3,9 +3,11 @@ use crate::{create_msg, create_user, establish_connection, follow, get_followers
 use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
+use actix_web_prom::PrometheusMetricsBuilder;
 use chrono::{DateTime, Local, Utc};
 use log::LevelFilter;
 use pwhash::bcrypt;
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 #[actix_web::main]
@@ -19,9 +21,19 @@ pub async fn start() -> std::io::Result<()> {
     let date = local.format("%m_%e_%y-%H:%M:%S").to_string();
 
     let _ = simple_logging::log_to_file(format!("{}.log", date), LevelFilter::Warn);
+
+    let mut labels = HashMap::new();
+    labels.insert("label1".to_string(), "value1".to_string());
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .const_labels(labels)
+        .build()
+        .unwrap();
+    
     HttpServer::new(move || {
         App::new()
             .app_data(latest.clone())
+            .wrap(prometheus.clone())
             .service(fs::Files::new("/static", "./static/").index_file("index.html"))
             .service(get_latest)
             .service(post_register)

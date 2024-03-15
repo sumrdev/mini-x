@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use actix_files as fs;
 use actix_identity::config::LogoutBehaviour;
 use actix_identity::Identity;
@@ -31,11 +33,28 @@ use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
+use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
+
+
+async fn health() -> HttpResponse {
+    HttpResponse::Ok().finish()
+}
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
+
+    let mut labels = HashMap::new();
+    labels.insert("label1".to_string(), "value1".to_string());
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .const_labels(labels)
+        .build()
+        .unwrap();
+
     HttpServer::new(move || {
         App::new()
+            .wrap(prometheus.clone())
+            .service(web::resource("/health").to(health))
             .wrap(
                 IdentityMiddleware::builder()
                     .logout_behaviour(LogoutBehaviour::DeleteIdentityKeys)

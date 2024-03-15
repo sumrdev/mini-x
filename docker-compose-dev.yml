@@ -14,7 +14,6 @@ services:
       - ./databases:/databases/
     ports:
       - "5000:5000"
-      - "5001:5001"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@pg_db:5432/mini-x
     depends_on:
@@ -31,4 +30,27 @@ services:
       - "5432:5432"
     networks:
       - main
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - main
+    ports:
+      - "9090:9090"
+    command: --config.file=/etc/prometheus/prometheus.yaml
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    networks:
+      - main
+    ports:
+      - '3000:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
 
