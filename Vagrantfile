@@ -53,7 +53,7 @@ Vagrant.configure("2") do |config|
         apt-get -o DPkg::Lock::Timeout=120 update -qq -y
       SHELL
     config.vm.provision :docker
-    config.vm.provision :docker_compose, yml: "/home/vagrant/docker-compose.yml", run: "always"
+    config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
   end
 
   config.vm.define "monitoring" do |config|
@@ -81,7 +81,7 @@ Vagrant.configure("2") do |config|
         apt-get -o DPkg::Lock::Timeout=120 update -qq -y
       SHELL
     config.vm.provision :docker
-    config.vm.provision :docker_compose, yml: "/home/vagrant/docker-compose.yml", run: "always"
+    config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
   end
 
 end
