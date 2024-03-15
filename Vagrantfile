@@ -48,6 +48,10 @@ Vagrant.configure("2") do |config|
       provider.ipv6 = false
       provider.monitoring = false
     end
+    # Wait for apt to be ready 
+    config.vm.provision "shell", inline: <<-SHELL
+        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+      SHELL
     config.vm.provision :docker
     config.vm.provision :docker_compose, yml: "/home/vagrant/docker-compose.yml", run: "always"
   end
@@ -72,13 +76,13 @@ Vagrant.configure("2") do |config|
       provider.ipv6 = false
       provider.monitoring = false
     end
+    # Wait for apt to be ready 
+    config.vm.provision "shell", inline: <<-SHELL
+        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+      SHELL
     config.vm.provision :docker
     config.vm.provision :docker_compose, yml: "/home/vagrant/docker-compose.yml", run: "always"
   end
 
-  # Wait for apt to be ready 
-  config.vm.provision "shell", inline: <<-SHELL
-      apt-get -o DPkg::Lock::Timeout=120 update -qq -y
-    SHELL
 end
 
