@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 #[derive(Clone)]
 pub struct UserTemplate {
-    pub user_id: i32,
+    pub user_id: i64,
     pub username: String,
     pub email: String
 }

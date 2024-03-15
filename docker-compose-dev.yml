@@ -5,8 +5,23 @@ networks:
   name: mini-x-network
 
 services:
+  postgres:
+    image: postgres:latest
+    container_name: pg_db
+    environment:
+      POSTGRES_DB: mini-x
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes: 
+      - ./databases:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - main
   app:
-    build: .
+    build:
+      context: .
+      shm_size: '128m'
     container_name: mini-x
     networks:
       - main
@@ -19,17 +34,6 @@ services:
     depends_on:
       - postgres
 
-  postgres:
-    image: postgres:latest
-    container_name: pg_db
-    environment:
-      POSTGRES_DB: mini-x
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    networks:
-      - main
 
   prometheus:
     image: prom/prometheus

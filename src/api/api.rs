@@ -48,7 +48,7 @@ pub async fn start() -> std::io::Result<()> {
     .await
 }
 
-fn get_user_id(username: &str) -> Option<i32> {
+fn get_user_id(username: &str) -> Option<i64> {
     let conn = &mut establish_connection();
     get_user_by_name(conn, username).and_then(|user| Some(user.user_id))
 }
@@ -140,7 +140,6 @@ async fn messages_per_user_get(
                 pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
             }).collect();
         
-
         HttpResponse::Ok().json(messages)
     } else {
         HttpResponse::NotFound().json("")

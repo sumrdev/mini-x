@@ -13,7 +13,6 @@ use dotenvy::dotenv;
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
 
-    //let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     PgConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
@@ -54,7 +53,7 @@ pub fn get_public_messages(conn: &mut PgConnection, limit: i32) -> Vec<(Messages
         .expect("Error loading messages and post")
 }
 
-pub fn create_msg(conn: &mut PgConnection, author_id: &i32, text: &str, pub_date: String, flagged: &i32) -> Messages {
+pub fn create_msg(conn: &mut PgConnection, author_id: &i64, text: &str, pub_date: String, flagged: &i64) -> Messages {
     use self::schema::messages;
 
     let new_message = NewMessage {
@@ -72,7 +71,7 @@ pub fn create_msg(conn: &mut PgConnection, author_id: &i32, text: &str, pub_date
 
 }
 
-pub fn follow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
+pub fn follow(conn: &mut PgConnection, follower_id: i64, followed_id: i64) {
     use self::schema::followers;
 
     let new_follower = NewFollower {
@@ -87,7 +86,7 @@ pub fn follow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
         .expect("Error creating new message");
 }
 
-pub fn unfollow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
+pub fn unfollow(conn: &mut PgConnection, follower_id: i64, followed_id: i64) {
     use self::schema::followers;
     let _ = diesel::delete(
         followers::table.filter(
@@ -96,7 +95,7 @@ pub fn unfollow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
             .execute(conn);
 }
 
-pub fn get_followers(conn: &mut PgConnection, user_id: i32, limit: i32) -> Vec<Users> {
+pub fn get_followers(conn: &mut PgConnection, user_id: i64, limit: i32) -> Vec<Users> {
     use self::schema::followers;
     use self::schema::users;
 
@@ -109,7 +108,7 @@ pub fn get_followers(conn: &mut PgConnection, user_id: i32, limit: i32) -> Vec<U
         .expect("Couldn't get followers")
 }
 
-pub fn get_user_by_id(conn: &mut PgConnection, user_id: i32) -> Option<Users> {
+pub fn get_user_by_id(conn: &mut PgConnection, user_id: i64) -> Option<Users> {
     use self::schema::users;
 
     users::table
@@ -131,7 +130,7 @@ pub fn get_user_by_name(conn: &mut PgConnection, username: &str) -> Option<Users
         .expect("Error fetching user by name")
 }
 
-pub fn get_user_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Messages, Users)> {
+pub fn get_user_timeline(conn: &mut PgConnection, id: i64, limit: i32) -> Vec<(Messages, Users)> {
     use self::schema::messages;
     use self::schema::users;
 
@@ -146,7 +145,7 @@ pub fn get_user_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(M
         .expect("Error loading messages and post")
 }
 
-pub fn get_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Messages, Users)> {
+pub fn get_timeline(conn: &mut PgConnection, id: i64, limit: i32) -> Vec<(Messages, Users)> {
     use self::schema::followers;
     use self::schema::messages;
     use self::schema::users;
@@ -180,10 +179,10 @@ pub fn get_passwd_hash(conn: &mut PgConnection, username: &str) -> Option<String
         .expect("Error loading messages and post")
 }
 
-pub fn is_following(conn: &mut PgConnection, followed_id: i32, follower_id: i32) -> bool {
+pub fn is_following(conn: &mut PgConnection, followed_id: i64, follower_id: i64) -> bool {
     use self::schema::followers;
 
-    let result: Result<Option<i32>, diesel::result::Error> = followers::table
+    let result: Result<Option<i64>, diesel::result::Error> = followers::table
         .find((follower_id, followed_id))
         .select(followers::who_id)
         .first(conn)
