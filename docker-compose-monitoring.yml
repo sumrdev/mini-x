@@ -19,3 +19,6 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    user: '1000'
+    volumes:
+       - './grafana_data:/var/lib/grafana'

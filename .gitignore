@@ -171,3 +171,5 @@ cython_debug/
 .vagrant/
 
 ssh-keys
+
+grafana_data
