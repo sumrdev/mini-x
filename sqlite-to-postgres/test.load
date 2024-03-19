@@ -6,7 +6,8 @@ WITH include drop, create tables, no truncate, create indexes, reset sequences, 
 
 SET maintenance_work_mem to '128MB', work_mem to '12MB'
 
-CAST type bigint to int
+CAST type integer with extra auto_increment to serial drop typemod keep default keep not null,
+     type integer to integer    using integer-to-string
 
 BEFORE LOAD DO
 $$ create schema if not exists minix;$$;
