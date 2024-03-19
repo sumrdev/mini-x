@@ -32,7 +32,6 @@ use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
-use prometheus::Opts;
 use actix_web_prom::{PrometheusMetricsBuilder};
 
 #[actix_web::main]
@@ -77,7 +76,7 @@ pub async fn start() -> std::io::Result<()> {
     .await
 }
 
-fn get_user_id(username: &str) -> i64 {
+fn get_user_id(username: &str) -> i32 {
     let diesel_conn = &mut establish_connection();
     let user = get_user_by_name(diesel_conn, username);
     if let Some(user) = user {
@@ -101,7 +100,7 @@ fn get_user_template_by_name(username: &str) -> Option<UserTemplate> {
     }
 }
 
-fn get_user_template(user_id: i64) -> Option<UserTemplate> {
+fn get_user_template(user_id: i32) -> Option<UserTemplate> {
     let diesel_conn = &mut establish_connection();
     let user = get_user_by_id(diesel_conn, user_id);
     if let Some(user) = user {
@@ -117,7 +116,7 @@ fn get_user_template(user_id: i64) -> Option<UserTemplate> {
 
 fn get_user(user_option: Option<Identity>) -> Option<UserTemplate> {
     if let Some(user) = user_option {
-        let user_id = user.id().unwrap().parse::<i64>().unwrap();
+        let user_id = user.id().unwrap().parse::<i32>().unwrap();
         get_user_template(user_id)
     } else {
         None
@@ -235,7 +234,7 @@ async fn follow_user(
         let _target_username = path.clone();
         let _target_id = get_user_id(&_target_username);
         let conn = &mut establish_connection();
-        let _ = follow(conn, _current_user.id().unwrap().parse::<i64>().unwrap(),_target_id);
+        let _ = follow(conn, _current_user.id().unwrap().parse::<i32>().unwrap(),_target_id);
         let mut message = String::from("You are now following ");
         message.push_str(&_target_username);
         add_flash(session, message.as_str());
@@ -260,7 +259,7 @@ async fn unfollow_user(
         let _target_username = path.clone();
         let _target_id = get_user_id(&_target_username);
         let conn = &mut establish_connection();
-        let _ = unfollow(conn, _current_user.id().unwrap().parse::<i64>().unwrap(), _target_id);
+        let _ = unfollow(conn, _current_user.id().unwrap().parse::<i32>().unwrap(), _target_id);
         let mut message = String::from("You are no longer following ");
         message.push_str(&_target_username);
         add_flash(session, message.as_str());
@@ -283,7 +282,7 @@ async fn add_message(
         if let Some(user) = user {
         let conn = &mut establish_connection();
         let timestamp = Utc::now().to_rfc3339();
-        let user_id = user.id().unwrap().parse::<i64>().unwrap();
+        let user_id = user.id().unwrap().parse::<i32>().unwrap();
         let _ = create_msg(conn, &user_id, &msg.text, timestamp, &0);
         add_flash(session, "Your message was recorded");
         return HttpResponse::Found()
@@ -302,7 +301,7 @@ async fn login(
     session: Session,
 ) -> impl Responder {
     if let Some(_) = user {
-        add_flash(session, "You are already loggei64n");
+        add_flash(session, "You are already logged in");
         HttpResponse::TemporaryRedirect()
             .append_header((header::LOCATION, "/"))
             .finish()

@@ -48,7 +48,7 @@ pub async fn start() -> std::io::Result<()> {
     .await
 }
 
-fn get_user_id(username: &str) -> Option<i64> {
+fn get_user_id(username: &str) -> Option<i32> {
     let conn = &mut establish_connection();
     get_user_by_name(conn, username).and_then(|user| Some(user.user_id))
 }

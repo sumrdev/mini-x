@@ -2,24 +2,24 @@
 
 diesel::table! {
     followers (who_id, whom_id) {
-        who_id -> Int8,
-        whom_id -> Int8,
+        who_id -> Int4,
+        whom_id -> Int4,
     }
 }
 
 diesel::table! {
     messages (message_id) {
-        message_id -> Int8,
-        author_id -> Int8,
+        message_id -> Int4,
+        author_id -> Int4,
         text -> Text,
         pub_date -> Text,
-        flagged -> Int8,
+        flagged -> Int4,
     }
 }
 
 diesel::table! {
     users (user_id) {
-        user_id -> Int8,
+        user_id -> Int4,
         username -> Text,
         email -> Text,
         pw_hash -> Text,
