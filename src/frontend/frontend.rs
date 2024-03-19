@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+
 use actix_files as fs;
 use actix_identity::config::LogoutBehaviour;
 use actix_identity::Identity;
 use actix_identity::IdentityMiddleware;
 use actix_session::Session;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-
 use actix_web::http::{header, StatusCode};
 use actix_web::web::{self, Redirect};
 
@@ -31,9 +32,19 @@ use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
+use prometheus::Opts;
+use actix_web_prom::{PrometheusMetricsBuilder};
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
+    let mut labels = HashMap::new();
+    labels.insert("label1".to_string(), "value1".to_string());
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .const_labels(labels)
+        .build()
+        .unwrap();
+
     HttpServer::new(move || {
         App::new()
             .wrap(
@@ -48,6 +59,7 @@ pub async fn start() -> std::io::Result<()> {
                     .cookie_http_only(false)
                     .build(),
             )
+            .wrap(prometheus.clone())
             .service(register)
             .service(post_register)
             .service(timeline)
