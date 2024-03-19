@@ -123,13 +123,13 @@ async fn messages_api(
 
 #[get("msgs/{username}")]
 async fn messages_per_user_get(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     amount: web::Query<MessageAmount>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let conn = &mut establish_connection();
         let messages: Vec<Message> = get_timeline(conn, user_id, amount.no)
@@ -148,13 +148,13 @@ async fn messages_per_user_get(
 
 #[post("msgs/{username}")]
 async fn messages_per_user_post(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     msg: web::Json<MessageContent>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let conn = &mut establish_connection();
         let _ = create_msg(conn, &user_id, &msg.content, Utc::now().to_rfc3339(), &0);
@@ -166,13 +166,13 @@ async fn messages_per_user_post(
 
 #[get("fllws/{username}")]
 async fn follows_get(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     amount: web::Query<MessageAmount>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let conn = &mut establish_connection();
         let followers = get_followers(conn, user_id, amount.no);
@@ -189,13 +189,13 @@ async fn follows_get(
 
 #[post("fllws/{username}")]
 async fn follows_post(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     follow_param: web::Json<FollowParam>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let follow_param = follow_param.into_inner();
         if let Some(follow_username) = follow_param.follow {
