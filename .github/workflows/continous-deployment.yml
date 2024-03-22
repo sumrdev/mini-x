@@ -32,7 +32,8 @@ jobs:
       - name: Test minix
         run: |
           docker build -t $DOCKER_USERNAME/minixtestimage -f Dockerfile_mini-x_test .
-          yes 2>/dev/null | docker compose -f docker-compose-dev.yml up -d 
+          yes 2>/dev/null | docker compose -f docker-compose-dev.yml up -d
+          sleep 5
           docker run --rm --network=mini-x-network $DOCKER_USERNAME/minixtestimage
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
