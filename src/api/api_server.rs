@@ -1,5 +1,8 @@
 use crate::api::api_structs::*;
-use crate::{create_msg, create_user, establish_connection, follow, get_followers, get_public_messages, get_timeline, get_user_by_name, unfollow};
+use crate::{
+    create_msg, create_user, establish_connection, follow, get_followers, get_public_messages,
+    get_timeline, get_user_by_name, unfollow,
+};
 use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
@@ -29,7 +32,7 @@ pub async fn start() -> std::io::Result<()> {
         .const_labels(labels)
         .build()
         .unwrap();
-    
+
     HttpServer::new(move || {
         App::new()
             .app_data(latest.clone())
@@ -50,7 +53,7 @@ pub async fn start() -> std::io::Result<()> {
 
 fn get_user_id(username: &str) -> Option<i32> {
     let conn = &mut establish_connection();
-    get_user_by_name(conn, username).and_then(|user| Some(user.user_id))
+    get_user_by_name(conn, username).map(|user| user.user_id)
 }
 
 fn update_latest(query: web::Query<Latest>, latest_action: web::Data<LatestAction>) {
@@ -74,14 +77,13 @@ async fn post_register(
 
     let user_exists = get_user_id(&info.username);
 
-    let error = 
-    if info.username.len() == 0 {
+    let error = if info.username.is_empty() {
         Some(String::from("You have to enter a username"))
-    } else if info.email.len() == 0 {
+    } else if info.email.is_empty() {
         Some(String::from("You have to enter a valid email address"))
-    } else if info.pwd.len() == 0 {
+    } else if info.pwd.is_empty() {
         Some(String::from("You have to enter a password"))
-    } else if let Some(_) = user_exists {
+    } else if user_exists.is_some() {
         Some(String::from("The username is already taken"))
     } else {
         None
@@ -115,8 +117,11 @@ async fn messages_api(
         .map(|(msg, user)| Message {
             content: msg.text,
             user: user.username,
-            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
-        }).collect();
+            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date)
+                .unwrap()
+                .to_utc(),
+        })
+        .collect();
 
     HttpResponse::Ok().json(messages)
 }
@@ -137,9 +142,12 @@ async fn messages_per_user_get(
             .map(|(msg, user)| Message {
                 content: msg.text,
                 user: user.username,
-                pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
-            }).collect();
-        
+                pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date)
+                    .unwrap()
+                    .to_utc(),
+            })
+            .collect();
+
         HttpResponse::Ok().json(messages)
     } else {
         HttpResponse::NotFound().json("")
@@ -176,10 +184,7 @@ async fn follows_get(
     if let Some(user_id) = get_user_id(username) {
         let conn = &mut establish_connection();
         let followers = get_followers(conn, user_id, amount.no);
-        let followers = followers
-            .into_iter()
-            .map(|user| user.username)
-            .collect();
+        let followers = followers.into_iter().map(|user| user.username).collect();
 
         HttpResponse::Ok().json(Follows { follows: followers })
     } else {
@@ -201,13 +206,13 @@ async fn follows_post(
         if let Some(follow_username) = follow_param.follow {
             if let Some(follow_user_id) = get_user_id(&follow_username) {
                 let conn = &mut establish_connection();
-                let _ = follow(conn, user_id, follow_user_id);
+                follow(conn, user_id, follow_user_id);
                 return HttpResponse::NoContent();
             }
         } else if let Some(unfollow_username) = follow_param.unfollow {
             if let Some(unfollow_user_id) = get_user_id(&unfollow_username) {
                 let conn = &mut establish_connection();
-                let _ = unfollow(conn, user_id, unfollow_user_id);
+                unfollow(conn, user_id, unfollow_user_id);
                 return HttpResponse::NoContent();
             }
         }
