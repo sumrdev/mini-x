@@ -27,6 +27,7 @@ services:
       - main
     ports:
       - "5000:5000"
+      - "5001:5001"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@pg_db:5432/mini-x
     depends_on:
