@@ -1,25 +1,25 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    follower (who_id, whom_id) {
-        who_id -> Integer,
-        whom_id -> Integer,
+    followers (who_id, whom_id) {
+        who_id -> Int4,
+        whom_id -> Int4,
     }
 }
 
 diesel::table! {
-    message (message_id) {
-        message_id -> Integer,
-        author_id -> Integer,
+    messages (message_id) {
+        message_id -> Int4,
+        author_id -> Int4,
         text -> Text,
         pub_date -> Text,
-        flagged -> Integer,
+        flagged -> Int4,
     }
 }
 
 diesel::table! {
-    user (user_id) {
-        user_id -> Integer,
+    users (user_id) {
+        user_id -> Int4,
         username -> Text,
         email -> Text,
         pw_hash -> Text,
@@ -27,7 +27,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
-    follower,
-    message,
-    user,
+    followers,
+    messages,
+    users,
 );

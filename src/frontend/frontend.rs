@@ -1,13 +1,13 @@
+use std::collections::HashMap;
+
 use actix_files as fs;
 use actix_identity::config::LogoutBehaviour;
 use actix_identity::Identity;
 use actix_identity::IdentityMiddleware;
 use actix_session::Session;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-
 use actix_web::http::{header, StatusCode};
 use actix_web::web::{self, Redirect};
-use diesel::connection::SimpleConnection;
 
 use crate::create_msg;
 use crate::create_user;
@@ -23,8 +23,8 @@ use crate::get_user_by_name;
 use crate::unfollow;
 use crate::get_user_timeline;
 use crate::is_following;
-use crate::Message;
-use crate::User;
+use crate::Messages;
+use crate::Users;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -32,12 +32,18 @@ use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
+use actix_web_prom::{PrometheusMetricsBuilder};
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
-    if !std::fs::metadata(get_database_string()).is_ok() {
-        let _ = init_db();
-    }
+    let mut labels = HashMap::new();
+    labels.insert("label1".to_string(), "value1".to_string());
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .const_labels(labels)
+        .build()
+        .unwrap();
+
     HttpServer::new(move || {
         App::new()
             .wrap(
@@ -52,6 +58,7 @@ pub async fn start() -> std::io::Result<()> {
                     .cookie_http_only(false)
                     .build(),
             )
+            .wrap(prometheus.clone())
             .service(register)
             .service(post_register)
             .service(timeline)
@@ -69,16 +76,6 @@ pub async fn start() -> std::io::Result<()> {
     .await
 }
 
-fn get_database_string() -> String {
-    String::from("/databases/mini-x.db")
-}
-
-fn init_db(){
-    const SCHEMA_SQL: &str = include_str!("../schema.sql");
-    let mut conn = establish_connection();
-    let _ = conn.batch_execute(&SCHEMA_SQL);
-}
-
 fn get_user_id(username: &str) -> i32 {
     let diesel_conn = &mut establish_connection();
     let user = get_user_by_name(diesel_conn, username);
@@ -86,6 +83,20 @@ fn get_user_id(username: &str) -> i32 {
         user.user_id
     } else {
         -1
+    }
+}
+
+fn get_user_template_by_name(username: &str) -> Option<UserTemplate> {
+    let diesel_conn = &mut establish_connection();
+    let user = get_user_by_name(diesel_conn, username);
+    if let Some(user) = user {
+        Some(UserTemplate {
+            user_id: user.user_id,
+            username: user.username,
+            email: user.email
+        })
+    } else {
+        None
     }
 }
 
@@ -123,10 +134,10 @@ fn gravatar_url(email: &str) -> String {
     )
 }
 
-fn format_messages (messages: Vec<(Message, User)>) -> Vec<Messages>{
-    let mut messages_for_template: Vec<Messages> = Vec::new();
+fn format_messages (messages: Vec<(Messages, Users)>) -> Vec<MessageTemplate>{
+    let mut messages_for_template: Vec<MessageTemplate> = Vec::new();
     for (msg, user) in messages {
-        let message = Messages {
+        let message = MessageTemplate {
             text: msg.text,
             username: user.username,
             gravatar_url: gravatar_url(&user.email),
@@ -184,22 +195,17 @@ async fn public_timeline(
 }
 
 #[get("/{username}")]
-async fn user_timeline(
-    path: web::Path<String>,
-    user: Option<Identity>,
-    flash_messages: Option<FlashMessages>,
-) -> impl Responder {
+async fn user_timeline(path: web::Path<String>, user: Option<Identity>, flash_messages: Option<FlashMessages>) -> impl Responder {
     let username = path.into_inner();
-    let mut diesel_conn = &mut establish_connection();
-    let is_user = get_user_by_name(diesel_conn, &username);
-    if is_user.is_some(){
-        let profile_user = is_user.unwrap();
+    let profile_user = get_user_template_by_name(&username);
+    if let Some(profile_user) = profile_user{
         let mut followed = false;
         let user = get_user(user);
+        let conn = &mut establish_connection();
         if let Some(user) = user.clone() {
-            followed = is_following(diesel_conn, profile_user.user_id, user.user_id)
+            followed = is_following(conn, profile_user.user_id, user.user_id)
         }
-        let messages = format_messages(get_user_timeline(&mut diesel_conn, profile_user.user_id, 30));
+        let messages = format_messages(get_user_timeline(conn, profile_user.user_id, 30));
         let rendered = TimelineTemplate {
             messages,
             request_endpoint: "user_timeline",
@@ -273,7 +279,7 @@ async fn add_message(
     msg: web::Form<MessageInfo>,
     session: Session,
 ) -> impl Responder {
-    if let Some(user) = user {
+        if let Some(user) = user {
         let conn = &mut establish_connection();
         let timestamp = Utc::now().to_rfc3339();
         let user_id = user.id().unwrap().parse::<i32>().unwrap();

@@ -3,10 +3,11 @@ use crate::{create_msg, create_user, establish_connection, follow, get_followers
 use actix_files as fs;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
+use actix_web_prom::PrometheusMetricsBuilder;
 use chrono::{DateTime, Local, Utc};
-use diesel::connection::SimpleConnection;
 use log::LevelFilter;
 use pwhash::bcrypt;
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 #[actix_web::main]
@@ -14,18 +15,25 @@ pub async fn start() -> std::io::Result<()> {
     let latest = web::Data::new(LatestAction {
         latest: Mutex::new(-1),
     });
-    if !std::fs::metadata(get_database_string()).is_ok() {
-        let _ = init_db();
-    }
     let local: DateTime<Local> = Local::now();
 
     // Format the date as a string in the desired format
     let date = local.format("%m_%e_%y-%H:%M:%S").to_string();
 
     let _ = simple_logging::log_to_file(format!("{}.log", date), LevelFilter::Warn);
+
+    let mut labels = HashMap::new();
+    labels.insert("label1".to_string(), "value1".to_string());
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .const_labels(labels)
+        .build()
+        .unwrap();
+    
     HttpServer::new(move || {
         App::new()
             .app_data(latest.clone())
+            .wrap(prometheus.clone())
             .service(fs::Files::new("/static", "./static/").index_file("index.html"))
             .service(get_latest)
             .service(post_register)
@@ -38,16 +46,6 @@ pub async fn start() -> std::io::Result<()> {
     .bind(("0.0.0.0", 5001))?
     .run()
     .await
-}
-
-fn get_database_string() -> String {
-    String::from("/databases/mini-x.db")
-}
-
-fn init_db(){
-    const SCHEMA_SQL: &str = include_str!("../schema.sql");
-    let mut conn = establish_connection();
-    let _ = conn.batch_execute(&SCHEMA_SQL);
 }
 
 fn get_user_id(username: &str) -> Option<i32> {
@@ -125,13 +123,13 @@ async fn messages_api(
 
 #[get("msgs/{username}")]
 async fn messages_per_user_get(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     amount: web::Query<MessageAmount>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let conn = &mut establish_connection();
         let messages: Vec<Message> = get_timeline(conn, user_id, amount.no)
@@ -142,7 +140,6 @@ async fn messages_per_user_get(
                 pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
             }).collect();
         
-
         HttpResponse::Ok().json(messages)
     } else {
         HttpResponse::NotFound().json("")
@@ -151,13 +148,13 @@ async fn messages_per_user_get(
 
 #[post("msgs/{username}")]
 async fn messages_per_user_post(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     msg: web::Json<MessageContent>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let conn = &mut establish_connection();
         let _ = create_msg(conn, &user_id, &msg.content, Utc::now().to_rfc3339(), &0);
@@ -169,13 +166,13 @@ async fn messages_per_user_post(
 
 #[get("fllws/{username}")]
 async fn follows_get(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     amount: web::Query<MessageAmount>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let conn = &mut establish_connection();
         let followers = get_followers(conn, user_id, amount.no);
@@ -192,13 +189,13 @@ async fn follows_get(
 
 #[post("fllws/{username}")]
 async fn follows_post(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     follow_param: web::Json<FollowParam>,
     query: web::Query<Latest>,
     latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
     update_latest(query, latest_action);
-    let username = &path.0;
+    let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let follow_param = follow_param.into_inner();
         if let Some(follow_username) = follow_param.follow {

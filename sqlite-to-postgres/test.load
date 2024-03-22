@@ -1,0 +1,13 @@
+load database
+     from 'test.db'
+     into postgresql://postgres:postgres@localhost:5432/mini-x
+
+WITH include drop, create tables, no truncate, create indexes, reset sequences, foreign keys
+
+SET maintenance_work_mem to '128MB', work_mem to '12MB'
+
+CAST type integer with extra auto_increment to serial drop typemod keep default keep not null,
+     type integer to integer    using integer-to-string
+
+BEFORE LOAD DO
+$$ create schema if not exists minix;$$;

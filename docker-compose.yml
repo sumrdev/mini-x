@@ -10,9 +10,9 @@ services:
     container_name: mini-x
     networks:
       - main
-    volumes:
-      - ./databases:/databases/
     ports:
       - "5000:5000"
       - "5001:5001"
-
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    
