@@ -20,19 +20,19 @@ use crate::get_public_messages;
 use crate::get_timeline;
 use crate::get_user_by_id;
 use crate::get_user_by_name;
-use crate::unfollow;
 use crate::get_user_timeline;
 use crate::is_following;
+use crate::unfollow;
 use crate::Messages;
 use crate::Users;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
+use actix_web_prom::PrometheusMetricsBuilder;
 use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
-use actix_web_prom::{PrometheusMetricsBuilder};
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
@@ -93,7 +93,7 @@ fn get_user_template_by_name(username: &str) -> Option<UserTemplate> {
         Some(UserTemplate {
             user_id: user.user_id,
             username: user.username,
-            email: user.email
+            email: user.email,
         })
     } else {
         None
@@ -107,7 +107,7 @@ fn get_user_template(user_id: i32) -> Option<UserTemplate> {
         Some(UserTemplate {
             user_id: user.user_id,
             username: user.username,
-            email: user.email
+            email: user.email,
         })
     } else {
         None
@@ -134,14 +134,16 @@ fn gravatar_url(email: &str) -> String {
     )
 }
 
-fn format_messages (messages: Vec<(Messages, Users)>) -> Vec<MessageTemplate>{
+fn format_messages(messages: Vec<(Messages, Users)>) -> Vec<MessageTemplate> {
     let mut messages_for_template: Vec<MessageTemplate> = Vec::new();
     for (msg, user) in messages {
         let message = MessageTemplate {
             text: msg.text,
             username: user.username,
             gravatar_url: gravatar_url(&user.email),
-            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date).unwrap().to_utc()
+            pub_date: chrono::DateTime::parse_from_rfc3339(&msg.pub_date)
+                .unwrap()
+                .to_utc(),
         };
         messages_for_template.push(message)
     }
@@ -152,7 +154,7 @@ fn format_messages (messages: Vec<(Messages, Users)>) -> Vec<MessageTemplate>{
 async fn timeline(flash: Option<FlashMessages>, user: Option<Identity>) -> impl Responder {
     if let Some(user) = get_user(user) {
         let diesel_conn = &mut establish_connection();
-        let messages = format_messages(get_timeline(diesel_conn,  user.user_id, 32));
+        let messages = format_messages(get_timeline(diesel_conn, user.user_id, 32));
 
         let rendered = TimelineTemplate {
             messages,
@@ -195,10 +197,14 @@ async fn public_timeline(
 }
 
 #[get("/{username}")]
-async fn user_timeline(path: web::Path<String>, user: Option<Identity>, flash_messages: Option<FlashMessages>) -> impl Responder {
+async fn user_timeline(
+    path: web::Path<String>,
+    user: Option<Identity>,
+    flash_messages: Option<FlashMessages>,
+) -> impl Responder {
     let username = path.into_inner();
     let profile_user = get_user_template_by_name(&username);
-    if let Some(profile_user) = profile_user{
+    if let Some(profile_user) = profile_user {
         let mut followed = false;
         let user = get_user(user);
         let conn = &mut establish_connection();
@@ -219,7 +225,7 @@ async fn user_timeline(path: web::Path<String>, user: Option<Identity>, flash_me
         .unwrap();
         HttpResponse::Ok().body(rendered)
     } else {
-        return HttpResponse::NotFound().finish();
+        HttpResponse::NotFound().finish()
     }
 }
 
@@ -234,7 +240,11 @@ async fn follow_user(
         let _target_username = path.clone();
         let _target_id = get_user_id(&_target_username);
         let conn = &mut establish_connection();
-        let _ = follow(conn, _current_user.id().unwrap().parse::<i32>().unwrap(),_target_id);
+        follow(
+            conn,
+            _current_user.id().unwrap().parse::<i32>().unwrap(),
+            _target_id,
+        );
         let mut message = String::from("You are now following ");
         message.push_str(&_target_username);
         add_flash(session, message.as_str());
@@ -259,7 +269,11 @@ async fn unfollow_user(
         let _target_username = path.clone();
         let _target_id = get_user_id(&_target_username);
         let conn = &mut establish_connection();
-        let _ = unfollow(conn, _current_user.id().unwrap().parse::<i32>().unwrap(), _target_id);
+        unfollow(
+            conn,
+            _current_user.id().unwrap().parse::<i32>().unwrap(),
+            _target_id,
+        );
         let mut message = String::from("You are no longer following ");
         message.push_str(&_target_username);
         add_flash(session, message.as_str());
@@ -279,7 +293,7 @@ async fn add_message(
     msg: web::Form<MessageInfo>,
     session: Session,
 ) -> impl Responder {
-        if let Some(user) = user {
+    if let Some(user) = user {
         let conn = &mut establish_connection();
         let timestamp = Utc::now().to_rfc3339();
         let user_id = user.id().unwrap().parse::<i32>().unwrap();
@@ -300,7 +314,7 @@ async fn login(
     user: Option<Identity>,
     session: Session,
 ) -> impl Responder {
-    if let Some(_) = user {
+    if user.is_some() {
         add_flash(session, "You are already logged in");
         HttpResponse::TemporaryRedirect()
             .append_header((header::LOCATION, "/"))
@@ -367,13 +381,13 @@ async fn register(flash_messages: Option<FlashMessages>) -> impl Responder {
 
 #[post("/register")]
 async fn post_register(info: web::Form<RegisterInfo>, session: Session) -> impl Responder {
-    if info.username.len() == 0 {
+    if info.username.is_empty() {
         add_flash(session, "You have to enter a username");
         return Redirect::to("/register").see_other();
-    } else if info.email.len() == 0 || !info.email.contains("@") {
+    } else if info.email.is_empty() || !info.email.contains('@') {
         add_flash(session, "You have to enter a valid email address");
         return Redirect::to("/register").see_other();
-    } else if info.password.len() == 0 {
+    } else if info.password.is_empty() {
         add_flash(session, "You have to enter a password");
         return Redirect::to("/register").see_other();
     } else if info.password != info.password2 {

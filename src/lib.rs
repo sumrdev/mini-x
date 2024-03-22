@@ -18,12 +18,7 @@ pub fn establish_connection() -> PgConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
-pub fn create_user(
-    conn: &mut PgConnection,
-    username: &str,
-    email: &str,
-    pw_hash: &str,
-) -> Users {
+pub fn create_user(conn: &mut PgConnection, username: &str, email: &str, pw_hash: &str) -> Users {
     use self::schema::users;
 
     let new_post = NewUser {
@@ -53,14 +48,20 @@ pub fn get_public_messages(conn: &mut PgConnection, limit: i32) -> Vec<(Messages
         .expect("Error loading messages and post")
 }
 
-pub fn create_msg(conn: &mut PgConnection, author_id: &i32, text: &str, pub_date: String, flagged: &i32) -> Messages {
+pub fn create_msg(
+    conn: &mut PgConnection,
+    author_id: &i32,
+    text: &str,
+    pub_date: String,
+    flagged: &i32,
+) -> Messages {
     use self::schema::messages;
 
     let new_message = NewMessage {
         author_id,
         text,
         pub_date: &pub_date,
-        flagged
+        flagged,
     };
 
     diesel::insert_into(messages::table)
@@ -68,7 +69,6 @@ pub fn create_msg(conn: &mut PgConnection, author_id: &i32, text: &str, pub_date
         .returning(Messages::as_select())
         .get_result(conn)
         .expect("Error creating new message")
-
 }
 
 pub fn follow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
@@ -78,7 +78,7 @@ pub fn follow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
         who_id: &follower_id,
         whom_id: &followed_id,
     };
-    
+
     diesel::insert_into(followers::table)
         .values(&new_follower)
         .returning(Followers::as_select())
@@ -90,9 +90,12 @@ pub fn unfollow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
     use self::schema::followers;
     let _ = diesel::delete(
         followers::table.filter(
-            followers::who_id.eq(follower_id)
-            .and(followers::whom_id.eq(followed_id))))
-            .execute(conn);
+            followers::who_id
+                .eq(follower_id)
+                .and(followers::whom_id.eq(followed_id)),
+        ),
+    )
+    .execute(conn);
 }
 
 pub fn get_followers(conn: &mut PgConnection, user_id: i32, limit: i32) -> Vec<Users> {
@@ -152,15 +155,14 @@ pub fn get_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Messag
 
     messages::table
         .inner_join(users::table.on(messages::author_id.eq(users::user_id)))
-            .filter(messages::flagged.eq(0))
-            .filter(
-                users::user_id.eq(id)
-                .or(users::user_id.eq_any(
-                    followers::table
+        .filter(messages::flagged.eq(0))
+        .filter(
+            users::user_id.eq(id).or(users::user_id.eq_any(
+                followers::table
                     .select(followers::whom_id)
-                    .filter(followers::who_id.eq(id)))
-         ))
-
+                    .filter(followers::who_id.eq(id)),
+            )),
+        )
         .limit(limit.into())
         .select((Messages::as_select(), Users::as_select()))
         .order_by(messages::pub_date.desc())
