@@ -14,8 +14,8 @@ fn init_db() {
 fn main() {
     init_db();
 
-    let handle1 = thread::spawn(|| client::start());
-    let handle2 = thread::spawn(|| api_server::start());
+    let handle1 = thread::spawn(client::start);
+    let handle2 = thread::spawn(api_server::start);
 
     let _ = handle1.join().unwrap();
     let _ = handle2.join().unwrap();
