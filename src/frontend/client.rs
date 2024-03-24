@@ -33,6 +33,7 @@ use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
+use actix_web::middleware::Logger;
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
@@ -59,6 +60,7 @@ pub async fn start() -> std::io::Result<()> {
                     .build(),
             )
             .wrap(prometheus.clone())
+            .wrap(Logger::default())
             .service(register)
             .service(post_register)
             .service(timeline)
@@ -346,7 +348,7 @@ async fn post_login(
             .append_header((header::LOCATION, "/login"))
             .finish();
     }
-    println!("{:?}", result);
+    //println!("{:?}", result);
     if let Some(stored_hash) = result {
         if bcrypt::verify(info.password.clone(), &stored_hash) {
             // Successful login

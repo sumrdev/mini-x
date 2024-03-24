@@ -3,12 +3,11 @@ use crate::{
     create_msg, create_user, establish_connection, follow, get_followers, get_public_messages,
     get_timeline, get_user_by_name, unfollow,
 };
-use actix_files as fs;
+use actix_web::middleware::Logger;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 use actix_web_prom::PrometheusMetricsBuilder;
-use chrono::{DateTime, Local, Utc};
-use log::LevelFilter;
+use chrono::Utc;
 use pwhash::bcrypt;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -18,12 +17,6 @@ pub async fn start() -> std::io::Result<()> {
     let latest = web::Data::new(LatestAction {
         latest: Mutex::new(-1),
     });
-    let local: DateTime<Local> = Local::now();
-
-    // Format the date as a string in the desired format
-    let date = local.format("%m_%e_%y-%H:%M:%S").to_string();
-
-    let _ = simple_logging::log_to_file(format!("{}.log", date), LevelFilter::Warn);
 
     let mut labels = HashMap::new();
     labels.insert("label1".to_string(), "value1".to_string());
@@ -37,7 +30,7 @@ pub async fn start() -> std::io::Result<()> {
         App::new()
             .app_data(latest.clone())
             .wrap(prometheus.clone())
-            .service(fs::Files::new("/static", "./static/").index_file("index.html"))
+            .wrap(Logger::default())
             .service(get_latest)
             .service(post_register)
             .service(messages_per_user_get)

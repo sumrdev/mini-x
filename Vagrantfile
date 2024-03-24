@@ -84,6 +84,37 @@ Vagrant.configure("2") do |config|
     config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
   end
 
+  config.vm.define "logging" do |config|
+    config.vm.provision "file", source: "./docker-compose-logging.yml", destination: "~/docker-compose.yml"
+    config.vm.provision "file", source: "./filebeat.yml", destination: "~/filebeat.yml"
+    config.vm.provision "file", source: "./nginx.conf", destination: "~/nginx.conf"
+    config.vm.network "forwarded_port", guest: 5601, host: 5601
+    config.vm.network "forwarded_port", guest: 9200, host: 9200
+    config.vm.network "forwarded_port", guest: 8881, host: 8881
+    config.vm.network "forwarded_port", guest: 8882, host: 8882
+
+    config.vm.provider :digital_ocean do |provider, override|
+      override.ssh.private_key_path = "~/.ssh/ssh-key"
+      override.vm.box = 'digital_ocean'
+      override.nfs.functional = false
+      override.vm.allowed_synced_folder_types = :rsync
+      provider.token = ENV["DIGITAL_OCEAN_TOKEN"]
+      provider.image = 'ubuntu-22-04-x64'
+      provider.region = 'fra1'
+      provider.size = 's-2vcpu-4gb' #Elasticsearch needs alot of memory it seems
+      provider.backups_enabled = false
+      provider.private_networking = false
+      provider.ipv6 = false
+      provider.monitoring = false
+    end
+    # Wait for apt to be ready 
+    config.vm.provision "shell", inline: <<-SHELL
+        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+      SHELL
+    config.vm.provision :docker
+    config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
+  end
+
   config.vm.define "postgres" do |config|
     config.vm.provision "file", source: "./docker-compose.db.yml", destination: "~/docker-compose.yml"
     config.vm.network "forwarded_port", guest: 5432, host: 5432
@@ -105,6 +136,9 @@ Vagrant.configure("2") do |config|
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
         apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+      SHELL
+    config.vm.provision "shell", env: {"USERNAME" => ENV['ES_USERNAME'], "PASSWORD" => ENV['ES_PASSWORD']}, inline: <<-SHELL
+        htpasswd -cb .htpasswd "${USERNAME}" "${PASSWORD}"
       SHELL
     config.vm.provision :docker
     config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"

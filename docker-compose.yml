@@ -1,8 +1,8 @@
 version: '3.3'
 
 networks:
- main:
-  name: mini-x-network
+  main:
+    name: mini-x-network
 
 services:
   app:
@@ -15,4 +15,18 @@ services:
       - "5001:5001"
     environment:
       - DATABASE_URL=${DATABASE_URL}
-    
+
+  filebeat:
+    image: "docker.elastic.co/beats/filebeat:8.6.2"
+    container_name: filebeat
+    environment:
+      - "ELK_USER=filebeat-mini-x"
+      - "ES_URL=${ES_URL}"
+      - "ES_PROTOCOL=${ES_PROTOCOL}"
+      - "ES_USERNAME=${ES_USERNAME}"
+      - "ES_PASSWORD=${ES_PASSWORD}"
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock
