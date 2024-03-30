@@ -59,7 +59,7 @@ jobs:
           scp -i ~/.ssh/do_ssh_key 
           -o StrictHostKeyChecking=no 
           ./docker-compose.yml 
-          $SSH_USER@$SSH_HOST:/vagrant/docker-compose.yml
+          $SSH_USER@$SSH_HOST:/root/docker-compose.yml
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -68,7 +68,7 @@ jobs:
         run: >
           ssh $SSH_USER@$SSH_HOST
           -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no
-          'docker compose -f /vagrant/docker-compose.yml up --pull always -d --remove-orphans'
+          'docker compose -f /root/docker-compose.yml up --pull always -d --remove-orphans'
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
