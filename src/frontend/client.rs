@@ -25,6 +25,7 @@ use crate::is_following;
 use crate::unfollow;
 use crate::Messages;
 use crate::Users;
+use actix_web::middleware::Logger;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -33,7 +34,6 @@ use askama_actix::Template;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use pwhash::bcrypt;
-use actix_web::middleware::Logger;
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
