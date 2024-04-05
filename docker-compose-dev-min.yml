@@ -1,0 +1,39 @@
+version: '3.3'
+
+networks:
+  elk:
+  main:
+    name: mini-x-network
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: pg_db
+    environment:
+      POSTGRES_DB: mini-x
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/schema.sql:/docker-entrypoint-initdb.d/psql_dump.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - main
+  app:
+    build:
+      context: .
+      shm_size: '128m'
+    container_name: mini-x
+    networks:
+      - main
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@pg_db:5432/mini-x
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

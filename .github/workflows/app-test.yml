@@ -1,0 +1,23 @@
+name: Test Mini-X
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Test minix
+        run: |
+          docker build -t minixtestimage -f Dockerfile_mini-x_test .
+          yes 2>/dev/null | docker compose -f docker-compose-dev-min.yml up -d
+          sleep 5
+          docker run --rm --network=mini-x-network minixtestimage

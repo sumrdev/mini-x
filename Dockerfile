@@ -25,7 +25,7 @@ WORKDIR /usr/src/mini-x
 
 COPY --from=BUILDER /usr/src/mini-x/target/release ./
 
-COPY src/frontend/static/ .
+COPY src/frontend/static/ ./src/frontend/static/
 RUN apk update
 RUN apk add libc6-compat
 RUN apk add libgcc

@@ -1,0 +1,69 @@
+version: '3.5'
+
+networks:
+  elk:
+
+volumes:
+    elk_elasticsearch_data:
+    kibanadata:
+
+services:
+
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:8.6.2"
+    container_name: es
+    environment:
+        - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+        - "discovery.type=single-node"
+        - "xpack.security.enabled=false"
+    volumes:
+        - elk_elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+        - elk
+
+  kibana:
+    image: "docker.elastic.co/kibana/kibana:8.6.2"
+    container_name: kibana
+    environment:
+        - "elasticsearch.hosts='[\"http://elasticsearch:9200\"]'"
+        - "xpack.security.enabled=false"
+    networks:
+        - elk
+    volumes:
+        - kibanadata:/usr/share/kibana/data
+
+  filebeat:
+    image: "docker.elastic.co/beats/filebeat:8.6.2"
+    container_name: filebeat
+    environment:
+        - "ELK_USER=filebeat-elastic"
+        - "ES_URL=elasticsearch:9200"
+        - "ES_PROTOCOL=${ES_PROTOCOL}"
+        - "ES_USERNAME=${ES_USERNAME}"
+        - "ES_PASSWORD=${ES_PASSWORD}"
+    user: root
+    volumes:
+        - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+        - /var/lib/docker:/var/lib/docker:ro
+        - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - elk
+
+
+  nginx:
+    image: nginx
+    container_name: proxy
+    ports:
+      - 9200:9200
+      - 5601:5601
+      - 8881:8881
+      - 8882:8882
+    networks:
+      - elk
+    volumes:
+      - type: bind
+        source: ./nginx.conf
+        target: /etc/nginx/nginx.conf
+      - type: bind
+        source: ./.htpasswd
+        target: /etc/nginx/.htpasswd

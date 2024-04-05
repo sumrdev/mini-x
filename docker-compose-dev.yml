@@ -1,8 +1,9 @@
 version: '3.3'
 
 networks:
- main:
-  name: mini-x-network
+  elk:
+  main:
+    name: mini-x-network
 
 services:
   postgres:
@@ -57,5 +58,51 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
 
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:8.6.2"
+    container_name: es
+    environment:
+        - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+        - "discovery.type=single-node"
+        - "xpack.security.enabled=false"
+    volumes:
+        - elk_elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+        - elk
+    ports:
+      - 9200:9200
+
+  kibana:
+    image: "docker.elastic.co/kibana/kibana:8.6.2"
+    container_name: kibana
+    environment:
+        - "elasticsearch.hosts='[\"http://elasticsearch:9200\"]'"
+        - "xpack.security.enabled=false"
+    networks:
+        - elk
+    volumes:
+        - kibanadata:/usr/share/kibana/data
+    ports:
+      - 5601:5601
+
+  filebeat:
+    image: "docker.elastic.co/beats/filebeat:8.6.2"
+    container_name: filebeat
+    environment:
+        - "ELK_USER=filebeat-dev"
+        - "ES_URL=elasticsearch:9200"
+        - "ES_PROTOCOL=http"
+        - "ES_USERNAME=elastic"
+        - "ES_PASSWORD=elastic"
+    user: root
+    volumes:
+        - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+        - /var/lib/docker:/var/lib/docker:ro
+        - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+        - elk
+
 volumes:
   postgres_data:
+  elk_elasticsearch_data:
+  kibanadata:
