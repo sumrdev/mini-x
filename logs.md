@@ -41,6 +41,21 @@ We finished up the work on the rust API in this week, and set up Docker compose,
 
 ## Week 5
 
+### Adherence to "Three Ways" principles
+#### Flow:
+In order to achieve flow, the group has used Github Projects in order to facilitate a KanBan board workflow so that the each of us have an overview over the status of current tasks or future tasks. We also achieved a sense of flow by implementing continous deployment, such that the technical side of delivering value flows well with as little friction and manual labour as possible. Flow was also enhanced by our policy that pull requests should represent single features, and thus merged as soon as that feature is usable and ready for customers.
+
+#### Feedback:
+We implemented several feedback loops. Firstly any PR is reviewed by another group member and comments must be resolved before the PR can be approved, whereafter the owner of the PR must be the one to finalize the merge.
+We also have automated testing which provides a sense of feedback loop in the continous delivery to ensure that the quality and functionality of the code remains as we expect.
+Lastly we plan on implementing monitoring on the droplet from a separate droplet, so that we can get feedback on several metrics such as API request duration, API request sum, and custom metrics such as a counter on the amount of function calls on for example post_register, messages_per_user_post etc. Since feedback is about identifying and addressing issues quickly, implementing a good monitoring system is critical.
+
+#### Continual Learning and Experimentation:
+As a bachelor group, by diving into a completely new language - Rust - we found that it is indeed necessary to mix a healthy amount of experimentation and adherence to documentation. So in our process, experimentation arose from trying a framework for solving some issue, realizing it doesnt work, trying something else and repeating. We therefore tried to create an environment where each group member would feel psychologically safe to try out something, if they had read that it could potentially solve the issue.
+
+With regards to Continual Learning, we didn't schedule any reoccuring events for discussing new technologies, methodologies, roadblocks etc. Instead we opted to agree to talk openly about these things if need be. This worked well for us during development, but experimenting with different ways of continually learning is something we are discussing currently.
+
+### Choosing an ORM
 We choose diesel.rs for our ORM. Known for having your tables inside your code with structs meaning type safety, and other nice things like the table! macro. Can map rust code directly to sql queries, so you control your queries and not the ORM. Also has very useful documentation for getting started https://github.com/diesel-rs/diesel/tree/2.1.x/examples https://diesel.rs/guides/getting-started.
 Using the gettings started examples we quickly got something basic up and running. It would however take some time learning to build queries in a new way. And refactoring the system to use these queries. We refactored the application such that the queries lie outside the main logic, and we just call the functions from there instead.
 
