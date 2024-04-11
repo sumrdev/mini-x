@@ -28,12 +28,18 @@ Then we got the database working, this was not too bad. Excetp we had to figure 
 
 ## Week 2
 
-### API
+### Starting Rust refactor
 
-For the API we just created a seperated actix project that worked independantly from the web app.
-Having knowledge and code from developing the web app made implementing the API very smooth.
-The implementation of default values for the query parameters "no" and "latest" didn't work.
-We skipped denying unauthorized requests as the test suite didn't cover it.
+We started by mapping the features of ITU-MiniTwit in featureOverview.txt as feature user stories such as "A user can register" etc. 
+
+In order to get started codewise, we followed the doc.rust-lang.org "Getting Started" documentation, installing dependencies and setting up a main.rs file and the .html pages fetched from the original MiniTwit flask app. Then we adapted and extended the rust functions based on the MiniTwit flask app functions such that the functionality remained identical.
+
+For the database side, we implemented rustqlite which acts as a wrapper for using SQLite from Rust. 
+
+### Dockerizing the rust refactor
+
+We dockerized the app by adding a Dockerfile to expose port 5000 and binding the app to that port in main.rs. Thus 
+
 
 ## Week 3
 
