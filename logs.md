@@ -13,7 +13,7 @@ We chose rust, it's blazingly fast!
 The reasoning behind this came from the multiple sources online claiming high performance, memory safety and code which is less likely to fail in production. Rust has a lot of documentation community support, and many frameworks which aid in the many aspects of web app development.
 ### Choosing a framework
 
-We looked at Roket and Actix, however, the Actix framework seemed to have better performance and scalability as opposed to Roket. The decision was made based on the analysis made here https://www.techempower.com/benchmarks/#section=data-r21&hw=ph&test=fortune where Actix-http is the 2nd most performant rust-compatible framework.
+We looked at Rocket and Actix, however, the Actix framework seemed to have better performance and scalability as opposed to Rocket. The decision was made based on the analysis made here https://www.techempower.com/benchmarks/#section=data-r21&hw=ph&test=fortune where Actix-http is the 2nd most performant rust-compatible framework.
 
 ## Week 2
 
