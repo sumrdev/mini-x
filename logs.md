@@ -72,7 +72,30 @@ Using our ORM to change from sqlite to postgresql was not as simple as we would 
 
 ## Week 7
 
+This week, our focus shifted towards enhancing our application's logging capabilities to streamline troubleshooting and monitoring. 
+
+#### Key activities and changes:
+Integration with ELK Stack: 
+- We established a robust logging infrastructure using the ELK (Elasticsearch, Logstash, Kibana) stack. We utilized Docker Compose to set up Elasticsearch and Kibana, and configured Filebeat to ship logs from our containers directly to Elasticsearch.
+- Configured Filebeat to capture container logs, filtering and processing them to enrich the logs with Docker metadata before forwarding to Elasticsearch.
+- Ensured security by setting up nginx as a reverse proxy to Elasticsearch and Kibana, with basic authentication using .htpasswd for added security.
+
+GitHub Actions for Continuous Deployment: 
+- Updated our continuous deployment pipeline to incorporate building and testing our Dockerized application. The .github/workflows/continous-deployment.yml was modified to integrate Docker Buildx for better build performance and multi-platform support.
+- The pipeline now also handles dynamic injection of environment variables for seamless deployment across different stages.
+
+Docker Compose and Vagrant Updates: Significant updates were made to our docker-compose configurations to support the new logging components and ensure they integrate smoothly with the existing setup.
+- Modified docker-compose-logging.yml to include services for the ELK stack, ensuring proper network and volume configurations to facilitate communication and data persistence.
+
+Security Enhancements: 
+- Addressed potential security vulnerabilities by configuring secure communication between the services. 
+- Implemented basic authentication for access to Elasticsearch and Kibana through nginx, which proxies the requests and provides an additional layer of security.
+
+Logging Configuration in Application Code: 
+- Updated our Rust application to utilize env_logger for environment-aware logging, allowing us to dynamically control log verbosity for deployment/debug logs.
+
 ## Week 8
+Enhancing CI/CD setup with test suite and static code analysis
 
 ## Week 9
 
