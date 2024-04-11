@@ -25,6 +25,7 @@ use crate::is_following;
 use crate::unfollow;
 use crate::Messages;
 use crate::Users;
+use actix_web::middleware::Logger;
 use actix_web::HttpMessage;
 use actix_web::HttpRequest;
 use actix_web::{cookie::Key, get, post, App, HttpResponse, HttpServer, Responder};
@@ -59,6 +60,7 @@ pub async fn start() -> std::io::Result<()> {
                     .build(),
             )
             .wrap(prometheus.clone())
+            .wrap(Logger::default())
             .service(register)
             .service(post_register)
             .service(timeline)
@@ -346,7 +348,7 @@ async fn post_login(
             .append_header((header::LOCATION, "/login"))
             .finish();
     }
-    println!("{:?}", result);
+    //println!("{:?}", result);
     if let Some(stored_hash) = result {
         if bcrypt::verify(info.password.clone(), &stored_hash) {
             // Successful login

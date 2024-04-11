@@ -11,7 +11,19 @@
 Vagrant.configure("2") do |config|
   config.env.enable
   config.vm.synced_folder '.', '/vagrant', disabled: true
-  config.vm.provision "file", source: "./.env", destination: "~/.env"
+  #config.vm.provision "file", source: "./.env", destination: "~/.env"
+  config.vm.provision "file", source: "./filebeat.yml", destination: "~/filebeat.yml"
+  config.vm.provision "shell", env: {
+      "URL" => ENV['ES_URL'],
+      "USERNAME" => ENV['ES_USERNAME'], 
+      "PASSWORD" => ENV['ES_PASSWORD'],
+      "PROTOCOL" => ENV['ES_PROTOCOL']
+      }, inline: <<-SHELL
+        echo "ES_URL=$URL" > ~/.env
+        echo "ES_USERNAME=$USERNAME" >> ~/.env
+        echo "ES_PASSWORD=$PASSWORD" >> ~/.env
+        echo "ES_PROTOCOL=$PROTOCOL" >> ~/.env
+    SHELL
 
   config.vm.define "local" do |config|
     config.vm.box = "bento/ubuntu-22.04"
@@ -35,7 +47,7 @@ Vagrant.configure("2") do |config|
     config.vm.network "forwarded_port", guest: 5000, host: 5000
 
     config.vm.provider :digital_ocean do |provider, override|
-      override.ssh.private_key_path = "~/.ssh/id_ed25519"
+      override.ssh.private_key_path = "~/.ssh/ssh_key"
       override.vm.box = 'digital_ocean'
       override.nfs.functional = false
       override.vm.allowed_synced_folder_types = :rsync
@@ -51,6 +63,9 @@ Vagrant.configure("2") do |config|
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
         apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+      SHELL
+    config.vm.provision "shell", env: { "DB_URL" => ENV['DATABASE_URL'] }, inline: <<-SHELL
+        echo "DATABASE_URL==$DB_URL" >> ~/.env
       SHELL
     config.vm.provision :docker
     config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
@@ -63,7 +78,7 @@ Vagrant.configure("2") do |config|
     config.vm.network "forwarded_port", guest: 9090, host: 9090
 
     config.vm.provider :digital_ocean do |provider, override|
-      override.ssh.private_key_path = "~/.ssh/id_ed25519"
+      override.ssh.private_key_path = "~/.ssh/ssh_key"
       override.vm.box = 'digital_ocean'
       override.nfs.functional = false
       override.vm.allowed_synced_folder_types = :rsync
@@ -84,10 +99,47 @@ Vagrant.configure("2") do |config|
     config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
   end
 
+  config.vm.define "logging" do |config|
+    config.vm.provision "file", source: "./docker-compose-logging.yml", destination: "~/docker-compose.yml"
+    config.vm.provision "file", source: "./nginx.conf", destination: "~/nginx.conf"
+    config.vm.network "forwarded_port", guest: 5601, host: 5601
+    config.vm.network "forwarded_port", guest: 9200, host: 9200
+    config.vm.network "forwarded_port", guest: 8881, host: 8881
+    config.vm.network "forwarded_port", guest: 8882, host: 8882
+
+    config.vm.provider :digital_ocean do |provider, override|
+      override.ssh.private_key_path = '~/.ssh/ssh_key'
+      override.vm.box = 'digital_ocean'
+      override.nfs.functional = false
+      override.vm.allowed_synced_folder_types = :rsync
+      provider.token = ENV["DIGITAL_OCEAN_TOKEN"]
+      provider.image = 'ubuntu-22-04-x64'
+      provider.region = 'fra1'
+      provider.size = 's-2vcpu-4gb' #Elasticsearch needs alot of memory it seems
+      provider.backups_enabled = false
+      provider.private_networking = false
+      provider.ipv6 = false
+      provider.monitoring = false
+    end
+    # Wait for apt to be ready 
+    config.vm.provision "shell", inline: <<-SHELL
+        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+      SHELL
+    config.vm.provision "shell", env: {
+      "USERNAME" => ENV['ES_USERNAME'], 
+      "PASSWORD" => ENV['ES_PASSWORD'],
+      }, inline: <<-SHELL
+        apt-get install apache2-utils
+        htpasswd -cb .htpasswd "$USERNAME" "$PASSWORD"
+      SHELL
+    config.vm.provision :docker
+    config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
+  end
+
   config.vm.define "postgres" do |config|
-    config.vm.provision "file", source: "./docker-compose.db.yml", destination: "~/docker-compose.yml"
+    config.vm.provision "file", source: "./docker-compose-db.yml", destination: "~/docker-compose.yml"
     config.vm.network "forwarded_port", guest: 5432, host: 5432
-    config.ssh.private_key_path = "~/.ssh/vagrant"
+    config.ssh.private_key_path = "~/.ssh/ssh_key"
 
     config.vm.provider :digital_ocean do |provider, override|
       override.vm.box = 'digital_ocean'
@@ -105,6 +157,9 @@ Vagrant.configure("2") do |config|
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
         apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+      SHELL
+    config.vm.provision "shell", env: { "PASSWORD" => ENV['POSTGRES_PASSWORD'] }, inline: <<-SHELL
+          echo "POSTGRES_PASSWORD=$PASSWORD" >> ~/.env
       SHELL
     config.vm.provision :docker
     config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
