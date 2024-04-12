@@ -58,3 +58,10 @@ pub struct NewMessage<'a> {
     pub pub_date: &'a String,
     pub flagged: &'a i32,
 }
+
+#[derive(Queryable)]
+#[diesel(table_name = latest)]
+pub struct Latest {
+    pub id: i32,
+    pub value: i32,
+}

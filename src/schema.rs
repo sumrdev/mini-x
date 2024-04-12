@@ -8,6 +8,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    latest (id) {
+        id -> Int4,
+        value -> Int4,
+    }
+}
+
+diesel::table! {
     messages (message_id) {
         message_id -> Int4,
         author_id -> Int4,
@@ -26,4 +33,4 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(followers, messages, users,);
+diesel::allow_tables_to_appear_in_same_query!(followers, latest, messages, users,);
