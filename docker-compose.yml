@@ -1,11 +1,13 @@
-version: '3.3'
+version: '3.8'
 
 
 services:
   minix:
     image: minixgroupd/miniximage:latest
     deploy:
-      replicas: 2
+      replicas: 3
+      update_config:
+          parallelism: 3
     env_file:
       - .env
     ports:
