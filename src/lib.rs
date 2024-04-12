@@ -150,7 +150,6 @@ pub fn get_user_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(M
 }
 
 pub fn get_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Messages, Users)> {
-
     let query = "((SELECT users.user_id, users.username, users.email, users.pw_hash, 
         messages.message_id, messages.author_id, messages.text, messages.pub_date, messages.flagged 
         FROM followers
