@@ -1,22 +1,18 @@
 use crate::api::api_structs::*;
 use crate::{
-    create_msg, create_user, establish_connection, follow, get_followers, get_public_messages,
-    get_timeline, get_user_by_name, unfollow,
+    create_msg, create_user, establish_connection, follow, get_followers, get_public_messages, get_timeline, get_user_by_name, set_latest, unfollow
 };
 use actix_web::middleware::Logger;
 use actix_web::web;
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 use actix_web_prom::PrometheusMetricsBuilder;
 use chrono::Utc;
+use diesel::PgConnection;
 use pwhash::bcrypt;
 use std::collections::HashMap;
-use std::sync::Mutex;
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
-    let latest = web::Data::new(LatestAction {
-        latest: Mutex::new(-1),
-    });
 
     let mut labels = HashMap::new();
     labels.insert("label1".to_string(), "value1".to_string());
@@ -28,7 +24,6 @@ pub async fn start() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .app_data(latest.clone())
             .wrap(prometheus.clone())
             .wrap(Logger::default())
             .service(get_latest)
@@ -49,24 +44,24 @@ fn get_user_id(username: &str) -> Option<i32> {
     get_user_by_name(conn, username).map(|user| user.user_id)
 }
 
-fn update_latest(query: web::Query<Latest>, latest_action: web::Data<LatestAction>) {
-    let mut latest = latest_action.latest.lock().unwrap();
-    *latest = query.latest;
+fn update_latest(conn: &mut PgConnection, query: web::Query<Latest>) {
+    set_latest(conn, query.latest);
 }
 
 #[get("/latest")]
-async fn get_latest(latest_action: web::Data<LatestAction>) -> impl Responder {
-    let latest = latest_action.latest.lock().unwrap();
-    HttpResponse::Ok().json(Latest { latest: *latest })
+async fn get_latest() -> impl Responder {
+    let conn = &mut establish_connection();
+    let latest = crate::get_latest(conn);
+    HttpResponse::Ok().json(Latest { latest })
 }
 
 #[post("/register")]
 async fn post_register(
     info: web::Json<RegisterInfo>,
     query: web::Query<Latest>,
-    latest: web::Data<LatestAction>,
 ) -> impl Responder {
-    update_latest(query, latest);
+    let conn = &mut establish_connection();
+    update_latest(conn, query);
 
     let user_exists = get_user_id(&info.username);
 
@@ -91,7 +86,6 @@ async fn post_register(
     } else {
         let hash = bcrypt::hash(info.pwd.clone()).unwrap();
 
-        let conn = &mut establish_connection();
         let _ = create_user(conn, &info.username, &info.email, &hash);
         HttpResponse::NoContent().json(String::from(""))
     }
@@ -101,10 +95,9 @@ async fn post_register(
 async fn messages_api(
     amount: web::Query<MessageAmount>,
     query: web::Query<Latest>,
-    latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
-    update_latest(query, latest_action);
     let conn = &mut establish_connection();
+    update_latest(conn, query);
     let messages: Vec<Message> = get_public_messages(conn, amount.no)
         .into_iter()
         .map(|(msg, user)| Message {
@@ -124,12 +117,11 @@ async fn messages_per_user_get(
     path: web::Path<String>,
     amount: web::Query<MessageAmount>,
     query: web::Query<Latest>,
-    latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
-    update_latest(query, latest_action);
+    let conn = &mut establish_connection();
+    update_latest(conn, query);
     let username = &path;
     if let Some(user_id) = get_user_id(username) {
-        let conn = &mut establish_connection();
         let messages: Vec<Message> = get_timeline(conn, user_id, amount.no)
             .into_iter()
             .map(|(msg, user)| Message {
@@ -152,12 +144,11 @@ async fn messages_per_user_post(
     path: web::Path<String>,
     msg: web::Json<MessageContent>,
     query: web::Query<Latest>,
-    latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
-    update_latest(query, latest_action);
+    let conn = &mut establish_connection();
+    update_latest(conn, query);
     let username = &path;
     if let Some(user_id) = get_user_id(username) {
-        let conn = &mut establish_connection();
         let _ = create_msg(conn, &user_id, &msg.content, Utc::now().to_rfc3339(), &0);
         HttpResponse::NoContent().json("")
     } else {
@@ -170,12 +161,11 @@ async fn follows_get(
     path: web::Path<String>,
     amount: web::Query<MessageAmount>,
     query: web::Query<Latest>,
-    latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
-    update_latest(query, latest_action);
+    let conn = &mut establish_connection();
+    update_latest(conn, query);
     let username = &path;
     if let Some(user_id) = get_user_id(username) {
-        let conn = &mut establish_connection();
         let followers = get_followers(conn, user_id, amount.no);
         let followers = followers.into_iter().map(|user| user.username).collect();
 
@@ -190,15 +180,14 @@ async fn follows_post(
     path: web::Path<String>,
     follow_param: web::Json<FollowParam>,
     query: web::Query<Latest>,
-    latest_action: web::Data<LatestAction>,
 ) -> impl Responder {
-    update_latest(query, latest_action);
+    let conn = &mut establish_connection();
+    update_latest(conn, query);
     let username = &path;
     if let Some(user_id) = get_user_id(username) {
         let follow_param = follow_param.into_inner();
         if let Some(follow_username) = follow_param.follow {
             if let Some(follow_user_id) = get_user_id(&follow_username) {
-                let conn = &mut establish_connection();
                 follow(conn, user_id, follow_user_id);
                 return HttpResponse::NoContent();
             }

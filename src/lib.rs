@@ -195,3 +195,22 @@ pub fn is_following(conn: &mut PgConnection, followed_id: i32, follower_id: i32)
 
     result.unwrap().is_some()
 }
+
+pub fn get_latest(conn: &mut PgConnection) -> i32 {
+    use self::schema::latest;
+
+    latest::table
+        .find(1)
+        .select(latest::value)
+        .first(conn)
+        .expect("Get latest failed")
+}
+
+pub fn set_latest(conn: &mut PgConnection, latest: i32){
+    use self::schema::latest;
+
+    let _: usize = diesel::update(latest::table.filter(latest::id.eq(1)))
+        .set(latest::value.eq(latest))
+        .execute(conn)
+        .expect("Set latest failed");
+}

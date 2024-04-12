@@ -20,3 +20,10 @@ CREATE TABLE IF NOT EXISTS messages (
   pub_date VARCHAR(255),
   flagged INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS latest(
+  id INTEGER PRIMARY KEY,
+  value INTEGER NOT NULL
+);
+
+INSERT INTO latest (id, value) VALUES (1, -1);
