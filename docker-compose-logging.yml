@@ -1,40 +1,13 @@
-version: '3.3'
+version: '3.5'
 
 networks:
   elk:
-  main:
-    name: mini-x-network
+
+volumes:
+    elk_elasticsearch_data:
+    kibanadata:
 
 services:
-  postgres:
-    image: postgres:latest
-    container_name: pg_db
-    environment:
-      POSTGRES_DB: mini-x
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./src/schema.sql:/docker-entrypoint-initdb.d/psql_dump.sql
-    ports:
-      - "5432:5432"
-    networks:
-      - main
-  app:
-    build:
-      context: .
-      shm_size: '128m'
-    container_name: mini-x
-    networks:
-      - main
-    ports:
-      - "5000:5000"
-      - "5001:5001"
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@pg_db:5432/mini-x
-    depends_on:
-      - postgres
-
 
   elasticsearch:
     image: "docker.elastic.co/elasticsearch/elasticsearch:8.6.2"
@@ -47,8 +20,6 @@ services:
         - elk_elasticsearch_data:/usr/share/elasticsearch/data
     networks:
         - elk
-    ports:
-      - 9200:9200
 
   kibana:
     image: "docker.elastic.co/kibana/kibana:8.6.2"
@@ -60,27 +31,39 @@ services:
         - elk
     volumes:
         - kibanadata:/usr/share/kibana/data
-    ports:
-      - 5601:5601
 
   filebeat:
     image: "docker.elastic.co/beats/filebeat:8.6.2"
     container_name: filebeat
     environment:
-        - "ELK_USER=filebeat-dev"
+        - "ELK_USER=filebeat-elastic"
         - "ES_URL=elasticsearch:9200"
-        - "ES_PROTOCOL=http"
-        - "ES_USERNAME=elastic"
-        - "ES_PASSWORD=elastic"
+        - "ES_PROTOCOL=${ES_PROTOCOL}"
+        - "ES_USERNAME=${ES_USERNAME}"
+        - "ES_PASSWORD=${ES_PASSWORD}"
     user: root
     volumes:
         - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
         - /var/lib/docker:/var/lib/docker:ro
         - /var/run/docker.sock:/var/run/docker.sock
     networks:
-        - elk
+      - elk
 
-volumes:
-  postgres_data:
-  elk_elasticsearch_data:
-  kibanadata:
+
+  nginx:
+    image: nginx
+    container_name: proxy
+    ports:
+      - 9200:9200
+      - 5601:5601
+      - 8881:8881
+      - 8882:8882
+    networks:
+      - elk
+    volumes:
+      - type: bind
+        source: ./nginx.conf
+        target: /etc/nginx/nginx.conf
+      - type: bind
+        source: ./.htpasswd
+        target: /etc/nginx/.htpasswd

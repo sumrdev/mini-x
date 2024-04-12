@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.3'
 
 services:
   postgres:
@@ -7,11 +7,26 @@ services:
     environment:
       POSTGRES_DB: mini-x
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  filebeat:
+    image: "docker.elastic.co/beats/filebeat:8.6.2"
+    container_name: filebeat
+    environment:
+        - "ELK_USER=filebeat-postgres"
+        - "ES_URL=${ES_URL}"
+        - "ES_PROTOCOL=${ES_PROTOCOL}"
+        - "ES_USERNAME=${ES_USERNAME}"
+        - "ES_PASSWORD=${ES_PASSWORD}"
+    user: root
+    volumes:
+        - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+        - /var/lib/docker:/var/lib/docker:ro
+        - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   postgres_data:

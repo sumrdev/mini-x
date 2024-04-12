@@ -6,7 +6,7 @@ use serde::Deserialize;
 pub struct UserTemplate {
     pub user_id: i32,
     pub username: String,
-    pub email: String
+    pub email: String,
 }
 
 #[derive(Debug)]
@@ -14,19 +14,19 @@ pub struct MessageTemplate {
     pub text: String,
     pub username: String,
     pub pub_date: DateTime<Utc>,
-    pub gravatar_url: String
+    pub gravatar_url: String,
 }
 
 #[derive(Template)]
 #[template(path = "../templates/timeline.html")]
 pub struct TimelineTemplate<'a> {
-    pub messages: Vec<MessageTemplate>, 
+    pub messages: Vec<MessageTemplate>,
     pub user: Option<UserTemplate>,
-    pub request_endpoint: &'a str, 
+    pub request_endpoint: &'a str,
     pub profile_user: Option<UserTemplate>,
-    pub followed: Option<bool>, 
+    pub followed: Option<bool>,
     pub flashes: Vec<String>,
-    pub title: String
+    pub title: String,
 }
 
 #[derive(Template)]
@@ -35,7 +35,7 @@ pub struct LoginTemplate {
     pub user: Option<UserTemplate>,
     pub error: String,
     pub flashes: Vec<String>,
-    pub username: String, 
+    pub username: String,
 }
 
 #[derive(Template)]
@@ -56,8 +56,8 @@ pub struct MessageInfo {
 
 #[derive(Deserialize)]
 pub struct LoginInfo {
-   pub username: String,
-   pub password: String,
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Deserialize)]

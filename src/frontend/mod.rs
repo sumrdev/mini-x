@@ -1,4 +1,4 @@
-pub mod frontend;
+pub mod client;
 
-pub mod template_structs;
 pub mod flash_messages;
+pub mod template_structs;

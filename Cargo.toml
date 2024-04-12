@@ -26,3 +26,4 @@ log = "0.4.21"
 prometheus = { version = "0.13.3", features = ["process"] }
 lazy_static = "1.4.0"
 actix-web-prom = "0.8.0"
+env_logger = "0.11.3"

@@ -7,7 +7,8 @@ use std::env;
 
 use self::models::*;
 use diesel::pg::PgConnection;
-use diesel::{prelude::*, Connection as Conn};
+use diesel::sql_types::Integer;
+use diesel::{prelude::*, sql_query, Connection as Conn};
 use dotenvy::dotenv;
 
 pub fn establish_connection() -> PgConnection {
@@ -18,12 +19,7 @@ pub fn establish_connection() -> PgConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
-pub fn create_user(
-    conn: &mut PgConnection,
-    username: &str,
-    email: &str,
-    pw_hash: &str,
-) -> Users {
+pub fn create_user(conn: &mut PgConnection, username: &str, email: &str, pw_hash: &str) -> Users {
     use self::schema::users;
 
     let new_post = NewUser {
@@ -53,14 +49,20 @@ pub fn get_public_messages(conn: &mut PgConnection, limit: i32) -> Vec<(Messages
         .expect("Error loading messages and post")
 }
 
-pub fn create_msg(conn: &mut PgConnection, author_id: &i32, text: &str, pub_date: String, flagged: &i32) -> Messages {
+pub fn create_msg(
+    conn: &mut PgConnection,
+    author_id: &i32,
+    text: &str,
+    pub_date: String,
+    flagged: &i32,
+) -> Messages {
     use self::schema::messages;
 
     let new_message = NewMessage {
         author_id,
         text,
         pub_date: &pub_date,
-        flagged
+        flagged,
     };
 
     diesel::insert_into(messages::table)
@@ -68,7 +70,6 @@ pub fn create_msg(conn: &mut PgConnection, author_id: &i32, text: &str, pub_date
         .returning(Messages::as_select())
         .get_result(conn)
         .expect("Error creating new message")
-
 }
 
 pub fn follow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
@@ -78,7 +79,7 @@ pub fn follow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
         who_id: &follower_id,
         whom_id: &followed_id,
     };
-    
+
     diesel::insert_into(followers::table)
         .values(&new_follower)
         .returning(Followers::as_select())
@@ -90,9 +91,12 @@ pub fn unfollow(conn: &mut PgConnection, follower_id: i32, followed_id: i32) {
     use self::schema::followers;
     let _ = diesel::delete(
         followers::table.filter(
-            followers::who_id.eq(follower_id)
-            .and(followers::whom_id.eq(followed_id))))
-            .execute(conn);
+            followers::who_id
+                .eq(follower_id)
+                .and(followers::whom_id.eq(followed_id)),
+        ),
+    )
+    .execute(conn);
 }
 
 pub fn get_followers(conn: &mut PgConnection, user_id: i32, limit: i32) -> Vec<Users> {
@@ -146,26 +150,27 @@ pub fn get_user_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(M
 }
 
 pub fn get_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Messages, Users)> {
-    use self::schema::followers;
-    use self::schema::messages;
-    use self::schema::users;
+    let query = "((SELECT users.user_id, users.username, users.email, users.pw_hash, 
+        messages.message_id, messages.author_id, messages.text, messages.pub_date, messages.flagged 
+        FROM followers
+        INNER JOIN messages ON followers.whom_id = messages.author_id
+        INNER JOIN users ON messages.author_id = users.user_id
+        WHERE followers.who_id = $1)
+        UNION
+        (SELECT users.user_id, users.username, users.email, users.pw_hash, 
+        messages.message_id, messages.author_id, messages.text, messages.pub_date, messages.flagged 
+        FROM messages
+        INNER JOIN users ON messages.author_id = users.user_id
+        WHERE users.user_id = $1))
+        ORDER BY pub_date DESC
+        LIMIT $2;
+        ";
 
-    messages::table
-        .inner_join(users::table.on(messages::author_id.eq(users::user_id)))
-            .filter(messages::flagged.eq(0))
-            .filter(
-                users::user_id.eq(id)
-                .or(users::user_id.eq_any(
-                    followers::table
-                    .select(followers::whom_id)
-                    .filter(followers::who_id.eq(id)))
-         ))
-
-        .limit(limit.into())
-        .select((Messages::as_select(), Users::as_select()))
-        .order_by(messages::pub_date.desc())
-        .load(conn)
-        .expect("Error loading messages and post")
+    sql_query(query)
+        .bind::<Integer, _>(id)
+        .bind::<Integer, _>(limit)
+        .load::<(Messages, Users)>(conn)
+        .expect("")
 }
 
 pub fn get_passwd_hash(conn: &mut PgConnection, username: &str) -> Option<String> {

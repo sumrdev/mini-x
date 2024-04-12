@@ -18,7 +18,7 @@ ALTER TABLE new_followers RENAME TO followers;
 ALTER TABLE message RENAME TO messages;
 
 CREATE TABLE IF NOT EXISTS new_messages (
-  message_id INTEGER PRIMARY KEY ,
+  message_id INTEGER PRIMARY KEY AUTOINCREMENT,
   author_id INTEGER NOT NULL,
   text TEXT NOT NULL,
   pub_date TEXT,
