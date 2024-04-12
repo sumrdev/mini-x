@@ -6,6 +6,7 @@ use super::schema::users;
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[derive(QueryableByName)]
 pub struct Users {
     pub user_id: i32,
     pub username: String,
@@ -24,6 +25,7 @@ pub struct NewUser<'a> {
 #[derive(Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::followers)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[derive(QueryableByName)]
 pub struct Followers {
     pub who_id: i32,
     pub whom_id: i32,
@@ -39,6 +41,7 @@ pub struct NewFollower<'a> {
 #[derive(Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::messages)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[derive(QueryableByName)]
 pub struct Messages {
     pub message_id: i32,
     pub author_id: i32,

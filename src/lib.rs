@@ -7,7 +7,8 @@ use std::env;
 
 use self::models::*;
 use diesel::pg::PgConnection;
-use diesel::{prelude::*, Connection as Conn};
+use diesel::sql_types::Integer;
+use diesel::{prelude::*, sql_query, Connection as Conn};
 use dotenvy::dotenv;
 
 pub fn establish_connection() -> PgConnection {
@@ -149,25 +150,27 @@ pub fn get_user_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(M
 }
 
 pub fn get_timeline(conn: &mut PgConnection, id: i32, limit: i32) -> Vec<(Messages, Users)> {
-    use self::schema::followers;
-    use self::schema::messages;
-    use self::schema::users;
+    let query = "((SELECT users.user_id, users.username, users.email, users.pw_hash, 
+        messages.message_id, messages.author_id, messages.text, messages.pub_date, messages.flagged 
+        FROM followers
+        INNER JOIN messages ON followers.whom_id = messages.author_id
+        INNER JOIN users ON messages.author_id = users.user_id
+        WHERE followers.who_id = $1)
+        UNION
+        (SELECT users.user_id, users.username, users.email, users.pw_hash, 
+        messages.message_id, messages.author_id, messages.text, messages.pub_date, messages.flagged 
+        FROM messages
+        INNER JOIN users ON messages.author_id = users.user_id
+        WHERE users.user_id = $1))
+        ORDER BY pub_date DESC
+        LIMIT $2;
+        ";
 
-    messages::table
-        .inner_join(users::table.on(messages::author_id.eq(users::user_id)))
-        .filter(messages::flagged.eq(0))
-        .filter(
-            users::user_id.eq(id).or(users::user_id.eq_any(
-                followers::table
-                    .select(followers::whom_id)
-                    .filter(followers::who_id.eq(id)),
-            )),
-        )
-        .limit(limit.into())
-        .select((Messages::as_select(), Users::as_select()))
-        .order_by(messages::pub_date.desc())
-        .load(conn)
-        .expect("Error loading messages and post")
+    sql_query(query)
+        .bind::<Integer, _>(id)
+        .bind::<Integer, _>(limit)
+        .load::<(Messages, Users)>(conn)
+        .expect("")
 }
 
 pub fn get_passwd_hash(conn: &mut PgConnection, username: &str) -> Option<String> {
