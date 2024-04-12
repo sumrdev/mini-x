@@ -48,6 +48,27 @@ Vagrant.configure("2") do |config|
       provider.ipv6 = false
       provider.monitoring = false
     end
+
+    config.vm.define "worker" do |config|
+      config.vm.network "forwarded_port", guest: 5001, host: 5001
+      config.vm.network "forwarded_port", guest: 5000, host: 5000
+  
+      config.vm.provider :digital_ocean do |provider, override|
+        override.ssh.private_key_path = "~/.ssh/id_ed25519"
+        override.vm.box = 'digital_ocean'
+        override.nfs.functional = false
+        override.vm.allowed_synced_folder_types = :rsync
+        provider.token = ENV["DIGITAL_OCEAN_TOKEN"]
+        provider.image = 'ubuntu-22-04-x64'
+        provider.region = 'fra1'
+        provider.size = 's-1vcpu-1gb'
+        provider.backups_enabled = false
+        provider.private_networking = false
+        provider.ipv6 = false
+        provider.monitoring = false
+      end
+    end
+
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
         apt-get -o DPkg::Lock::Timeout=120 update -qq -y
