@@ -1,7 +1,7 @@
 #!/bin/bash
+vagrant ssh droplet -c "docker swarm init --advertise-addr \$(hostname -I | cut -d\" \" -f1)"
 ip=$(vagrant ssh droplet -c 'hostname -I | cut -d" " -f1')
-vagrant ssh droplet -c "docker swarm init --advertise-addr $ip"
-token=vagrant ssh droplet -c 'docker swarm join-token manager -q'
+token=$(vagrant ssh droplet -c 'docker swarm join-token manager -q')
 
 echo "Token: $token"
 echo "IP: $ip"
