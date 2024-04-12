@@ -18,10 +18,8 @@ diesel::table! {
     messages (message_id) {
         message_id -> Int4,
         author_id -> Int4,
-        #[max_length = 255]
-        text -> Varchar,
-        #[max_length = 255]
-        pub_date -> Varchar,
+        text -> Text,
+        pub_date -> Text,
         flagged -> Int4,
     }
 }
@@ -29,12 +27,9 @@ diesel::table! {
 diesel::table! {
     users (user_id) {
         user_id -> Int4,
-        #[max_length = 100]
-        username -> Varchar,
-        #[max_length = 100]
-        email -> Varchar,
-        #[max_length = 100]
-        pw_hash -> Varchar,
+        username -> Text,
+        email -> Text,
+        pw_hash -> Text,
     }
 }
 
