@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
   user_id SERIAL PRIMARY KEY,
-  username VARCHAR(100)  NOT NULL,
-  email VARCHAR(100)  NOT NULL,
-  pw_hash VARCHAR(100) NOT NULL
+  username TEXT NOT NULL,
+  email TEXT NOT NULL,
+  pw_hash TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS followers (
@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS followers (
 CREATE TABLE IF NOT EXISTS messages (
   message_id SERIAL PRIMARY KEY,
   author_id INTEGER NOT NULL,
-  text VARCHAR(255) NOT NULL,
-  pub_date VARCHAR(255),
+  text TEXT NOT NULL,
+  pub_date TEXT,
   flagged INTEGER
 );
 
