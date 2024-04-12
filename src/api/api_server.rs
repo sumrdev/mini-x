@@ -1,6 +1,7 @@
 use crate::api::api_structs::*;
 use crate::{
-    create_msg, create_user, establish_connection, follow, get_followers, get_public_messages, get_timeline, get_user_by_name, set_latest, unfollow
+    create_msg, create_user, establish_connection, follow, get_followers, get_public_messages,
+    get_timeline, get_user_by_name, set_latest, unfollow,
 };
 use actix_web::middleware::Logger;
 use actix_web::web;
@@ -13,7 +14,6 @@ use std::collections::HashMap;
 
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
-
     let mut labels = HashMap::new();
     labels.insert("label1".to_string(), "value1".to_string());
     let prometheus = PrometheusMetricsBuilder::new("api")
@@ -56,10 +56,7 @@ async fn get_latest() -> impl Responder {
 }
 
 #[post("/register")]
-async fn post_register(
-    info: web::Json<RegisterInfo>,
-    query: web::Query<Latest>,
-) -> impl Responder {
+async fn post_register(info: web::Json<RegisterInfo>, query: web::Query<Latest>) -> impl Responder {
     let conn = &mut establish_connection();
     update_latest(conn, query);
 

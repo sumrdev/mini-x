@@ -206,7 +206,7 @@ pub fn get_latest(conn: &mut PgConnection) -> i32 {
         .expect("Get latest failed")
 }
 
-pub fn set_latest(conn: &mut PgConnection, latest: i32){
+pub fn set_latest(conn: &mut PgConnection, latest: i32) {
     use self::schema::latest;
 
     let _: usize = diesel::update(latest::table.filter(latest::id.eq(1)))
