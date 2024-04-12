@@ -1,15 +1,11 @@
 version: '3.3'
 
-networks:
- main:
-  name: mini-x-network
 
 services:
-  app:
+  minix:
     image: minixgroupd/miniximage:latest
-    container_name: mini-x
-    networks:
-      - main
+    deploy:
+      replicas: 2
     ports:
       - "5000:5000"
       - "5001:5001"
