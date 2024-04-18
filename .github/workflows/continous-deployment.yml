@@ -59,8 +59,7 @@ jobs:
         run: >
           ssh $SSH_USER@$SSH_HOST
           -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no
-          docker compose pull
-          'docker stack deploy --compose-file /root/docker-compose.yml minix'
+          'docker compose pull && docker stack deploy --compose-file /root/docker-compose.yml minix'
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
