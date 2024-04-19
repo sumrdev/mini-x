@@ -1,23 +1,20 @@
 ## Risk Identification
 ### Assets in our system. 
-In out system we six virtual machines hosted on digital ocean 5 of them are interesting to a malicious party. Our monitering is pratical for us but it does not hold much vallue.
+In out system we six virtual machines hosted on digital ocean 5 of them are interesting to a malicious party. Monitering provices all endpoints 
 ### Assets and their value
 - Application: The applicaiton is hosted on three seperate virtual machines each hosted. 
-  - Most information from can be found here
+  - public information is found here including usernames
   - 3 nodes worth of Compute power
 - Database: A single virtual machine with back up
   - All our data, hashed paswords, email, usernames, all messeges
 - Logging: A single VM with all our logs and error.
-  - Verbose error messeges
-- uptime: 
-  - value for users
 - Users: The users on the application
-  - Provides value 
+  - Provides value.
 
 ### Threats and risks to Assets 
 - Application: 
   - DDOS: our application can handle a quite a few requests per second deepending on the endpoint. 
-    - While our service can handle the simulator and then some. couple hundred users. We could put all our VMs to full load with one machine running FFUF in kali targeting computaionally heavy endpoints
+    - While our service can handle the simulator and then some. We could put all our VMs to full load with one machine running FFUF in kali targeting computaionally heavy endpoints
 - Database:
   - Injection: All  our fiels are sanitized and the ORM we use is injecction safe, the one SQL query we have uses prepared states
   - Hashed paswords: here we use bcrypt to encrypt them with salted hashing
@@ -28,7 +25,7 @@ In out system we six virtual machines hosted on digital ocean 5 of them are inte
 - Uptime: 
   - Our seystem is vulnurable to DDos attack affection up time which will affecct numper of users
 - Users: 
-  - Obceen content: there is no content filter and all content is allowed which could course users to leave
+  - Obscene content: there is no content filter and all content is allowed which could course users to leave
   - no service: If our service is down they leave 
   - no content: Without content user dont stay
   
