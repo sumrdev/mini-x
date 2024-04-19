@@ -1,39 +1,32 @@
 ## Risk Identification
 ### Assets in our system. 
-In out system we six virtual machines hosted on digital ocean 5 of them are interesting to a malicious party. Monitering provices all endpoints 
+In our system, there are six virtual machines hosted on Digital Ocean. Five of them hold an interest in a malicious party. Monitoring provides all endpoints 
 ### Assets and their value
-- Application: The applicaiton is hosted on three seperate virtual machines each hosted. 
-  - public information is found here including usernames
-  - 3 nodes worth of Compute power
-- Database: A single virtual machine with back up
-  - All our data, hashed paswords, email, usernames, all messeges
-- Logging: A single VM with all our logs and error.
+- Application: The application has three replicas on three separate virtual machines. 
+ - public information is found here, including usernames.
+ - 3 nodes worth of computing power
+- Database: A single virtual machine with a backup
+ - All our data, hashed passwords, email, usernames, all messages
+- Logging: A single VM with all our logs and errors.
 - Users: The users on the application
-  - Provides value.
+ - Provides value.
 
-### Threats and risks to Assets 
+### Threats and Risks to Assets 
 - Application: 
-  - DDOS: our application can handle a quite a few requests per second deepending on the endpoint. 
-    - While our service can handle the simulator and then some. We could put all our VMs to full load with one machine running FFUF in kali targeting computaionally heavy endpoints
+ - DDOS: our application can handle many requests per second depending on the endpoint. 
+ - While our service can handle the simulator and then some. We could put all our VMs to full load with one machine running FFUF in Kali, targeting computationally heavy endpoints.
 - Database:
-  - Injection: All  our fiels are sanitized and the ORM we use is injecction safe, the one SQL query we have uses prepared states
-  - Hashed paswords: here we use bcrypt to encrypt them with salted hashing
-  - Man in the middle: We send our data from the application to the database ussing HTTP
+ - Injection: All fields are sanitized. The ORM we use is injection-safe. The one SQL query we have uses prepared states.
+ - Hashed passwords: Here we use bcrypt to encrypt them with salted hashing
+ - Man in the middle: We send our data from the application to the database using HTTP
 - Logging: 
-  - Verbose error messeges, having better responses form your other attempt will enable better attacks. 
-  -  GDPR theft: Some user data could be found here
+ - Verbose error messages: having better responses from your other attempt will enable better attacks. 
+ - GDPR theft: Some user data can be acquired.
 - Uptime: 
-  - Our seystem is vulnurable to DDos attack affection up time which will affecct numper of users
+ - Our system is vulnerable to DDos attack affection up time. Decreased will affect the number of users.
 - Users: 
-  - Obscene content: there is no content filter and all content is allowed which could course users to leave
-  - no service: If our service is down they leave 
-  - no content: Without content user dont stay
-  
-## Risk Analysis
-(https)
-(man in the middle for db)
+ - Obscene content: There is no content filter, all content is allowed, which could cause users to leave
+ - no service: If our service is down, users leave 
+ - no content: Without content, users don't stay
+ 
 
-    Determine likelihood
-    Determine impact
-    Use a Risk Matrix to prioritize risk of scenarios
-    Discuss what are you going to do about each of the scenarios
