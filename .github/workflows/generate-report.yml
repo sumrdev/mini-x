@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - '*'
-    paths:
-      - 'report/**.md'
-      - 'report/images/**'
+
 
 jobs:
   converttopdf:
