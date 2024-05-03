@@ -3,7 +3,7 @@ name: Generate Report PDF
 on:
   push:
     branches:
-      - '*'
+      - 'docs/report'
 
 
 jobs:
