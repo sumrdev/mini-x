@@ -1,0 +1,32 @@
+
+name: Docs to PDF
+on:
+  push:
+    branches:
+      - '*'
+    paths:
+      - 'report/**.md'
+      - 'report/images/**'
+
+jobs:
+  converttopdf:
+    name: Build PDF
+    runs-on: ubuntu-latest
+    permissions:
+        # Give the default GITHUB_TOKEN write permission to commit and push the
+        # added or changed files to the repository.
+        contents: write  
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: baileyjm02/markdown-to-pdf@v1
+        with:
+          input_dir: report
+          output_dir: report/build
+          images_dir: report/images
+          # for example <img src="./images/file-name.png">
+          image_import: ./images
+          # Default is true, can set to false to only get PDF files
+          build_html: false
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
