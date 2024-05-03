@@ -1,5 +1,5 @@
 
-name: Docs to PDF
+name: Generate Report PDF
 on:
   push:
     branches:
