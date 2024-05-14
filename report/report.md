@@ -4,9 +4,9 @@
 
 | Student  | Email| 
 | -------- | -------- | 
+| David A. Feldner        | dafe@itu.dk  | 
 | Marius Thomsen          | mariu@itu.dk | 
 | Marius W. S. Nielsen    | mawn@itu.dk  | 
-| David A. Feldner        | dafe@itu.dk  | 
 | Markus Grand Petersen   | mgrp@itu.dk  | 
 | Michael Daniel Fabricius| midf@itu.dk  | 
 
@@ -16,10 +16,10 @@
 mini-x is a blazingly fast twitter/x clone written in Rust with the Actix framework. 
 
 ### 1.2 Design and Architechture of the project
-mini-x is designed with focus on performance, scalability and type safety. The application is structured into two main parts: the API server and the frontend client, each running concurrently on separate threads as seen in [`main.rs`](https://github.com/sumrdev/mini-x/blob/main/src/main.rs#L10-L11)
+```Markus```
+Mini-x is designed with focus on performance, scalability and type safety. The application is structured into two main parts: the API server and the frontend client as seen in [`main.rs`](https://github.com/sumrdev/mini-x/blob/main/src/main.rs#L10-L11). The API Server and Frontend Client are two sides of the same coin. The frontend part lets users interact with mini-x through a user interface whereas the API Server lets programmers interface with the application through command-line execution for compatability with the course simulation.
 #### 1.2.1 API Server
-The [API server](https://github.com/sumrdev/mini-x/blob/main/src/api/api_server.rs) is built using Actix-Web, a blazingly fast web framework for Rust. The API server acts as the endpoint the simulation interacts with. 
-
+The [API server](https://github.com/sumrdev/mini-x/blob/main/src/api/api_server.rs) is built using Actix-Web, a blazingly fast web framework for Rust. 
 
 
 #### 1.2.2 Frontend Client
@@ -38,8 +38,8 @@ The [API server](https://github.com/sumrdev/mini-x/blob/main/src/api/api_server.
     - Diesel was used for ORM to ensure safe database interactions. Diesel provides type safety and convinient DSL for rust, such that complex SQL queries can be constructed safely.
 - Docker and Docker Swarm:
     - Docker is used for containerization to ensure that the app runs identically across varying environments. Docker swarm manages a cluser of Docker Engines so we can spread workload horizontally.
-- ELK stack: 
-    - ElasticSearch, Logstash, Kibana and Beats was used for logging
+- EFK stack: 
+    - ElasticSearch, Filebeat and Kibana was used for logging
 - Prometheus and Grafana
     - Prometheus collects data from our api and frontend. The data is then shown in grafana for monitoring
 
@@ -53,23 +53,49 @@ Make UML Sequence diagram that shows the flow of information through your system
 
 ```
 Make illustrative sequence diagram that shows how requests from the simulator traverse your system.
+
+
 ```
+
+![image](https://www.plantuml.com/plantuml/png/PP6n3e8m48RtFiNb9Xry0GT3eeE36WGIvuDU214AqX9UtmRE1eI5vl_-BtTD8-keTqDJgyx_gwBgo3Z0SrsnSGXaePYEApn_U2T39VVmQ3MZX5vevlZVm5VRlwKDksImRezYZ1FPZC0BESh9Ce8KTQxcTU1m-is18ropB4uXuS_0rYd9rvLqf791PAIuGPNKSvrx5gVFMs0-MNh2RDSQoo9kjmgDvMovGjXRAgmYDje_nHS0)
 
 ## 2 Process' persepctive
 
-### 2.1 CD/CI Explanation 
+### 2.1 CI/CD Explanation 
 
 ```
+Mar
 A complete description of stages and tools included in the CI/CD chains, including deployment and release of your systems.
 ```
-### 2.2 Monitering
+To ensure that our system is always in a healthy condition and that as we have the highest quality as possible we have several workflows and tools to enable this. The first thing we should mention is the compiler in Rust has effectively a built-in static analysis tool. 
+
+#### Workflows/Tools and their purpose
+- Workflow: Continuous Deployment - Run on push to main
+    - Building and pushing the latest image to Docker Hub
+    - Deploying to the docker swarm
+- Workflow: Publish - Run on push to main with version tag
+    - Whenever we reach a new milestone we push a new git tag. This workflow then builds our application and archives the current sourcecode in a zipped file and makes a release along with all build artifacts. 
+- Workflow: Rust Format Check - Run on PR or push to main. 
+    - Runs static code analysis tool (linting tools). For this we use the rust packages clippy and rustfmt, and run them against our code. 
+- Workflow: Test Mini-X - Run on PR
+    - Runs the api and frontend Python tests we inherited against our service. This ensures we only merge when all tests pass.
+- Workflow: Generate Report PDF - Run on push to any branch
+    - Generates a pdf report from the markdown in our repository. This uses the `baileyjm02/markdown-to-pdf@v1` action to generate the report with a browser, and then `stefanzweifel/git-auto-commit-action@v5` to commit the result back to the same branch.
+- Tool: Docker
+    - Used as our containerizing software, used to ensure consistency in the environment, Load balancing and reliability
+
+
+### 2.2 Monitoring
+```Markus```
 ```
 How do you monitor your systems and what precisely do you monitor?
 ```
 ### 2.3 Logging 
+```Daniel```
 ```
 What do you log in your systems and how do you aggregate logs?
 ```
+
 ### 2.4 Security 
 ```
 Brief results of the security assessment and brief description of how did you harden the security of your system based on the analysis
@@ -100,13 +126,14 @@ In our system, there are six virtual machines hosted on Digital Ocean. Five of t
 - Uptime: 
  - Our system is vulnerable to DDos attack affection up time. Decreased will affect the number of users.
 - Users: 
- - Obscene content: There is no content filter, all content is allowed, which could cause users to leave
+ - Obscene content: There is no content filter, all content is allowed, which could result in inappropriate content, deterring users from the service
  - no service: If our service is down, users leave 
  - no content: Without content, users don't stay
 ### 2.5 IaC Strategy 
 ```
 Applied strategy for scaling and upgrades
 ```
+We use Vagrant as our tool for IaC, along with the vagrant-digitalocean and vagrant-docker plugins. In our vagrant file we have described all the virtual machines, called droplets in digital ocean, needed for our service, allowing us to bring our service up with a single command. Vagrant will automatically start new droplets, copy docker  and environment variables, install docker
 
 ## 3 Lessons learned perspective
 ```
@@ -128,7 +155,7 @@ and how did it work?
 
 #### 3.2.1 Data loss
 During the project we had 2 incidents that caused data loss. 
-The first incident happened right at the start of the simulator when we had deployed the database without a volume. We had also set up a workflow for when code was pushed to main or merged with a PR. This meant that approving any PR or pushing to main would cause our database to be deleted. Since everyone on the team was not aware of this issue, we ended up deleting our database. Because of a recent backup and quick action we quickly got up and running again - now with a volume for the database.
+The first incident happened right at the start of the simulator when we had deployed the database without a volume. We had also set up a deployment workflow for when code was pushed to main or merged with a PR. This meant that approving any PR or pushing to main would cause our database to be deleted. Since everyone on the team was not aware of this issue, we ended up deleting our database. Because of a recent backup and quick action we quickly got up and running again - now with a volume for the database.
 
 When we switched to having our postgres instance on its own server, we had set the password to be 'postgres' on a postgres server running on port 5432 - the default postgres port. This caused our database to be deleted by adversaries before we changed the password. Quite a silly mistake, we thought having a insecure password for a day or two would be fine, but that was not the case. Again due to backups we were able to restore some of the data.
 
@@ -142,20 +169,18 @@ After looking at our response time from day to day we noticed that it was higher
 ```
 Mention LLM tools how and where we used them and which ones did they help, speed up or slow us down. 
 ```
-
-
+With regards to the use of LLM's in mini-x, ChatGPT was used in the early stages of development as a means for fast researching. Since the group was unfamiliar with the programming language known as Rust, we used ChatGPT as an introductory tutor extracting the basics of the language far quicker than searching through docs. As we began the port to Rust, we used Copilot as another aid in the process of learning the API of new frameworks such as Actix-web, PostgreSQL and Docker.
 
 ## Figure List 
-API Squence Diagram 
 
-(Sequence Diagram)
+API Squence Diagram - mrmar
 
-Arhitecture Diagram(Might be contained in 3+1)
+Architecture Diagram(Might be contained in 3+1) - Markus
 
-3+1 Model viewpoint
+3+1 Model viewpoint - Mar 
 
-3+1 Component viewpoint
+3+1 Component viewpoint - David
 
-3+1 Deployment viewpoint
+3+1 Deployment viewpoint - Daniel
 
 Dependencies Diagram (NOT REQUIRED but cool)
