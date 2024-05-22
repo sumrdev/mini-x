@@ -19,17 +19,17 @@ mini-x is a blazingly fast twitter/x clone written in Rust with the Actix framew
 mini-x is designed with a focus on performance, scalability and security. The application is structured into two main parts: the API server and the frontend client as seen in [`main.rs`](https://github.com/sumrdev/mini-x/blob/main/src/main.rs#L10-L11). The API Server and Frontend Client are two sides of the same coin. The frontend part lets users interact with mini-x through a user interface whereas the API Server lets you interface with the application using JSON data for compatibility with the course simulation.
 
 
-![deployment_diagram](https://github.com/sumrdev/mini-x/blob/main/report/images/deployment_diagram.png?raw=true)
+![deployment_diagram](./images/deployment_diagram.png)
 *Figure 1.1 - 3+1 Deployment viewpoint showcasing the project's architecture*
 
-![Component 3+1.drawio](https://github.com/sumrdev/mini-x/blob/main/report/images/component_view.png?raw=true)
+![Component 3+1.drawio](./images/component_view.png)
 *Figure 1.2 - 3+1 Component and Connectors Viewpoint showing the components of mini-x and their connections*
 
 #### 1.2.1 Frontend Client & API Server
 The [API server](https://github.com/sumrdev/mini-x/blob/main/src/api/api_server.rs) and [frontend client](https://github.com/sumrdev/mini-x/blob/main/src/frontend/client.rs) are built using Actix-Web, a blazingly fast web framework for Rust. They handle all HTTP requests related to user authentication, message posting, retrieval of messages, following users, and provide endpoints for each.
 
-![3+1 Model viewpoint](https://github.com/sumrdev/mini-x/blob/main/report/images/model_view.png?raw=true)
-![modelview_frontend](https://github.com/sumrdev/mini-x/blob/main/report/images/modelview_frontend.png?raw=true)
+![3+1 Model viewpoint](./images/model_view.png)
+![modelview_frontend](./images/modelview_frontend.png)
 
 *Figure 1.3 - 3+1 Model viewpoint showcasing the structure of the application.*
 #### 1.2.2 Swarm Node
@@ -66,7 +66,7 @@ Since we are using Rust, we cannot share a grade of code quality, as many of the
 
 This is a sequence diagram of a client requesting a resource and its complete journey through our system. 
 
-![image](https://github.com/sumrdev/mini-x/blob/main/report/images/sequence-diagram.png?raw=true)
+![image](./images/sequence-diagram.png)
 
 *Figure 1.4 - Sequence diagram of a user request to our service*
 
@@ -97,7 +97,7 @@ To ensure that our system is always in a healthy condition and that as we have t
 - Workflow: Generate Report PDF - Run on push to any branch
     - Generates a PDF report from the markdown in our repository. This uses the `baileyjm02/markdown-to-pdf@v1` GitHub Action to generate the report with a headless browser, then `stefanzweifel/git-auto-commit-action@v5` to commit the result back to the same branch.
 
-![workflows_diagram](https://github.com/sumrdev/mini-x/blob/main/report/images/workflows_diagram.png?raw=true)
+![workflows_diagram](./images/workflows_diagram.png)
 *Figure 1.5 - Activity diagrams of our Github workflows*
 
 ### 2.2 Monitoring
