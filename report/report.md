@@ -19,17 +19,17 @@ mini-x is a blazingly fast twitter/x clone written in Rust with the Actix framew
 mini-x is designed with a focus on performance, scalability and security. The application is structured into two main parts: the API server and the frontend client as seen in [`main.rs`](https://github.com/sumrdev/mini-x/blob/main/src/main.rs#L10-L11). The API Server and Frontend Client are two sides of the same coin. The frontend part lets users interact with mini-x through a user interface whereas the API Server lets you interface with the application using JSON data for compatibility with the course simulation.
 
 
-![deployment_diagram](https://github.com/sumrdev/mini-x/blob/figures/modelview_outline/report/images/deployment_diagram.png?raw=true)
+![deployment_diagram](https://github.com/sumrdev/mini-x/blob/main/report/images/deployment_diagram.png?raw=true)
 *Figure 1.1 - 3+1 Deployment viewpoint showcasing the project's architecture*
 
-![Component 3+1.drawio](https://github.com/sumrdev/mini-x/blob/figures/modelview_outline/report/images/component_view.png?raw=true)
+![Component 3+1.drawio](https://github.com/sumrdev/mini-x/blob/main/report/images/component_view.png?raw=true)
 *Figure 1.2 - 3+1 Component and Connectors Viewpoint showing the components of mini-x and their connections*
 
 #### 1.2.1 Frontend Client & API Server
 The [API server](https://github.com/sumrdev/mini-x/blob/main/src/api/api_server.rs) and [frontend client](https://github.com/sumrdev/mini-x/blob/main/src/frontend/client.rs) are built using Actix-Web, a blazingly fast web framework for Rust. They handle all HTTP requests related to user authentication, message posting, retrieval of messages, following users, and provide endpoints for each.
 
-![3+1 Model viewpoint](https://github.com/sumrdev/mini-x/blob/figures/modelview_outline/report/images/model_view.png?raw=true)
-![modelview_frontend](https://github.com/sumrdev/mini-x/blob/figures/modelview_outline/report/images/modelview_frontend.png?raw=true)
+![3+1 Model viewpoint](https://github.com/sumrdev/mini-x/blob/main/report/images/model_view.png?raw=true)
+![modelview_frontend](https://github.com/sumrdev/mini-x/blob/main/report/images/modelview_frontend.png?raw=true)
 
 *Figure 1.3 - 3+1 Model viewpoint showcasing the structure of the application.*
 #### 1.2.2 Swarm Node
@@ -66,7 +66,7 @@ Since we are using Rust, we cannot share a grade of code quality, as many of the
 
 This is a sequence diagram of a client requesting a resource and its complete journey through our system. 
 
-![image](//www.plantuml.com/plantuml/png/XL6zJiCm4Dxp5AURse4NO42LO60egCIHc2_9gR9epiQ-gEBjiSZLQibGBxQ-dy-VVRkib7IUJaqiknzy9570vvDdKGJACFmTR-XbuHi97Jd1UnWP3Io6QO7_E_0pf2zJmwQTisxH7EV2h0s0BwJKKsQyH8zzizI1XwVBFV08hrrtSD3ozynP6yDl9UvCHzWujuUEq-I5r0VPNccjXANLC4CBF_Q5ExYFVUKASkqpBiSWcSsuxbaLztgsp3AadxWgQZzWpwvvtEnOnZB9Nm00)
+![image](https://github.com/sumrdev/mini-x/blob/main/report/images/sequence-diagram.png?raw=true)
 
 *Figure 1.4 - Sequence diagram of a user request to our service*
 
@@ -97,8 +97,8 @@ To ensure that our system is always in a healthy condition and that as we have t
 - Workflow: Generate Report PDF - Run on push to any branch
     - Generates a PDF report from the markdown in our repository. This uses the `baileyjm02/markdown-to-pdf@v1` GitHub Action to generate the report with a headless browser, then `stefanzweifel/git-auto-commit-action@v5` to commit the result back to the same branch.
 
-![workflows_diagram](https://github.com/sumrdev/mini-x/blob/figures/modelview_outline/report/images/workflows_diagram.png?raw=true)
-*Figure 1.5 - Sequence diagram of a user request to our service*
+![workflows_diagram](https://github.com/sumrdev/mini-x/blob/main/report/images/workflows_diagram.png?raw=true)
+*Figure 1.5 - Activity diagrams of our Github workflows*
 
 ### 2.2 Monitoring
 
@@ -126,20 +126,14 @@ We use the EFK stack (Elasticsearch, Filebeat, and Kibana) to provide powerfu
 - Availability 
     - Using just a single machine with [ffuf](https://github.com/ffuf/ffuf/), we could overload our application.
 - User information
-    - Obtaining the database password, one could read all user information.
+    - Obtaining the database password (stored in discrod), one could read all user information.
     - The application ran with HTTP meaning user information was a target to eavesdropping.
-    - Access to logging VM could proivde some user information (who followed who, who accessed's who, etc.)
+    - Access to logging VM could proivde some user information (e.g. user posted message at xx:xx, ip address of user)
 - Computational power
     - Obtaining our ssh key (stored in discord) would allow free access to any of our virutal machines.
 
 #### 2.4.3 Assessment and Action 
-The biggest vulnerabilities are denial of service and evaesdropping 
-
-
-We did not find any vulnerabilities in mini-x, and we would say that our service is secure. We do not have DDoS protection provided by Cloudflare or others. We have no high-value assets with known security risks. There are however, some reliability concerns as the database node and the manager node are both single points of failure. 
-
-#### 2.4.4 Actions after Pentest
-We did not find anything particularly interesting from the pentest except that it was fairly easy to take down our service with brute force. Since we did not find any appropriate DDoS protection services, we chose not to mitigate these types of attacks. Because of this, we did not apply any fixes or hardenings after our pentest results.
+The biggest threats to our system are a denial of service attack and evaesdropping of user information. The reason for this is that these threats are far more accessible than direct access to our virtual machines, which requires personal files or passwords. From this assessment we chose to implement HTTPS for the application.
 
 ### 2.5 IaC Strategy 
 We use Vagrant as our tool for IaC, along with the vagrant-digitalocean and vagrant-docker plugins. In our vagrant file, we have described all the virtual machines, called droplets on digital ocean, needed for our service, allowing us to bring our service up with a single command. Vagrant will automatically start new droplets, open necessary ports, transfer the docker-compose yml, and other needed files and environment variables, install docker and start docker-compose on the VM. Since all our VMs run Docker, they only need configuration files, and will automatically pull all Docker images needed.
