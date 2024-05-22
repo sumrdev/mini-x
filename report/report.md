@@ -9,7 +9,7 @@
 | Marius W. S. Nielsen     | mawn@itu.dk  |
 | Markus Grand Petersen    | mgrp@itu.dk  |
 | Michael Daniel Fabricius | midf@itu.dk  |
-
+- [Github Repository](https://github.com/sumrdev/mini-x)
 ## 1 Systems perspective
 
 ### 1.1 Description of the project
@@ -173,3 +173,11 @@ Since we wrote the application in Rust with speed in mind, everything else ran s
 ## 4 Usage of LLM's in mini-x
 
 With regards to the use of LLMs in mini-x, ChatGPT was used in the early stages of development as a means for fast researching. Since the group was unfamiliar with the programming language known as Rust, we used ChatGPT as an introductory tutor extracting the basics of the language far quicker than searching through docs. As we began the port to Rust, we used Copilot as another aid in the process of learning the API of new frameworks such as Actix-web, PostgreSQL and Docker.
+
+## 5 Artefacts
+- [Github Repository](https://github.com/sumrdev/mini-x) - Source code, version control, workflow runner and releases page.
+- [Service](https://helge.lol) - Application, the main website.
+- [API](https://api.helge.lol) - API used for the simulator.
+- [Monitoring](http://monitoring.helge.lol:3000/d/fdfqkjebp3x8gb/mini-x-monitoring) - Grafana dashboard showcasing monitoring.
+- [Logging](http://logging.helge.lol:5601/app/discover#/) - Kibana interface for logging.
+- [Issue tracking](https://github.com/users/sumrdev/projects/9) - Issues on GitHub tracking what needs to be done.
