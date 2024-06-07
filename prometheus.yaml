@@ -5,4 +5,4 @@ scrape_configs:
 - job_name: actix-monitoring
   honor_labels: true
   static_configs:
-  - targets: ['164.92.201.193:5001']
+  - targets: ['monitoring.helge.lol:5001']

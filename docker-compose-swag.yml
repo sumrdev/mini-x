@@ -1,0 +1,20 @@
+version: "3.3"
+services:
+  swag:
+    image: lscr.io/linuxserver/swag
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - URL=helge.lol
+      - SUBDOMAINS=www,api
+      - VALIDATION=http
+    volumes:
+      - /root/swag:/config
+    ports:
+      - 443:443
+      - 80:80 #optional
+    restart: unless-stopped

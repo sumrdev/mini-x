@@ -6,6 +6,7 @@ ip=$(echo $ip | grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b')
 ip=$ip:2377
 
 token=$(vagrant ssh droplet -c 'docker swarm join-token manager -q')
+token=$(echo "$token" | tr -d '\r')
 
 echo "Token: $token"
 echo "IP: $ip"

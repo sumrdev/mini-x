@@ -27,3 +27,6 @@ CREATE TABLE IF NOT EXISTS latest(
 );
 
 INSERT INTO latest (id, value) VALUES (1, -1);
+
+CREATE INDEX pub_date_index ON messages (pub_date);
+CREATE INDEX author_id_index ON messages (author_id);

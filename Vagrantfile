@@ -24,29 +24,14 @@ Vagrant.configure("2") do |config|
         echo "ES_PASSWORD=$PASSWORD" >> ~/.env
         echo "ES_PROTOCOL=$PROTOCOL" >> ~/.env
     SHELL
-  
-
-  ## Local VM For testing
-  config.vm.define "local" do |config|
-    config.vm.box = "bento/ubuntu-22.04"
-    config.vm.provider :libvirt do |domain|
-      domain.memory = 2048
-      domain.cpus = 4
-    end
-    config.vm.provision "file", source: "./docker-compose-monitoring.yml", destination: "~/docker-compose.yml"
-    config.vm.provision "file", source: "./prometheus.yaml", destination: "~/prometheus.yaml"
-    config.vm.network "forwarded_port", guest: 3000, host: 3000
-    config.vm.network "forwarded_port", guest: 9090, host: 9090
-    
-    config.vm.provision :docker
-    config.vm.provision :docker_compose, yml: "/home/vagrant/docker-compose.yml", run: "always"
-  end
 
   ## Main droplet
   # Manually had to patch my digital ocean plugin, by removing the {}
   # https://discuss.hashicorp.com/t/vagrant-digital-ocean-plugin-broken-with-2-3-6/54132
   config.vm.define "droplet" do |config|
     config.vm.provision "file", source: "./docker-compose.yml", destination: "~/docker-compose.yml"
+    config.vm.provision "file", source: "./docker-compose-swag.yml", destination: "~/docker-compose-swag.yml"
+    config.vm.provision "file", source: "./swag.conf", destination: "~/swag/nginx/site-confs/default.conf"
     config.vm.network "forwarded_port", guest: 5001, host: 5001
     config.vm.network "forwarded_port", guest: 5000, host: 5000
 
@@ -66,11 +51,17 @@ Vagrant.configure("2") do |config|
     end
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
-        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+
+        echo "Sleep"
         sleep 5
+        echo "Woke up"
+      SHELL
+    config.vm.provision "shell", env: {"DATABASE_URL" => ENV['DATABASE_URL']}, inline: <<-SHELL
+          echo "DATABASE_URL=$DATABASE_URL" >> ~/.env
       SHELL
     config.vm.provision :docker
     config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
+    config.vm.provision :docker_compose, yml: "/root/docker-compose-swag.yml", run: "always"
   end
 
   ## Worker droplet1
@@ -94,8 +85,12 @@ Vagrant.configure("2") do |config|
     end
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
-        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+        echo "Sleep"
         sleep 5
+        echo "Woke up"
+      SHELL
+    config.vm.provision "shell", env: {"DATABASE_URL" => ENV['DATABASE_URL']}, inline: <<-SHELL
+          echo "DATABASE_URL=$DATABASE_URL" >> ~/.env
       SHELL
     config.vm.provision :docker
   end
@@ -121,8 +116,9 @@ Vagrant.configure("2") do |config|
     end
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
-        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+        echo "Sleep"
         sleep 5
+        echo "Woke up"
       SHELL
     config.vm.provision :docker
   end
@@ -149,8 +145,12 @@ Vagrant.configure("2") do |config|
     end
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
-        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+        echo "Sleep"
         sleep 5
+        echo "Woke up"
+      SHELL
+    config.vm.provision "shell", env: {"DATABASE_URL" => ENV['DATABASE_URL']}, inline: <<-SHELL
+          echo "DATABASE_URL=$DATABASE_URL" >> ~/.env
       SHELL
     config.vm.provision :docker
     config.vm.provision :docker_compose, yml: "/root/docker-compose.yml", run: "always"
@@ -181,14 +181,16 @@ Vagrant.configure("2") do |config|
     end
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
-        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
+        echo "Sleep"
         sleep 5
+        echo "Woke up"
       SHELL
     config.vm.provision "shell", env: {
       "USERNAME" => ENV['ES_USERNAME'], 
       "PASSWORD" => ENV['ES_PASSWORD'],
       }, inline: <<-SHELL
-        apt-get install apache2-utils
+        apt-get update -y
+        apt-get install -y apache2-utils
         htpasswd -cb .htpasswd "$USERNAME" "$PASSWORD"
       SHELL
     config.vm.provision :docker
@@ -215,8 +217,9 @@ Vagrant.configure("2") do |config|
     end
     # Wait for apt to be ready 
     config.vm.provision "shell", inline: <<-SHELL
-        apt-get -o DPkg::Lock::Timeout=120 update -qq -y
-        sleep 5
+        echo "Sleep"
+        sleep 300
+        echo "Woke up"
       SHELL
     config.vm.provision "shell", env: { "PASSWORD" => ENV['POSTGRES_PASSWORD'] }, inline: <<-SHELL
           echo "POSTGRES_PASSWORD=$PASSWORD" >> ~/.env
